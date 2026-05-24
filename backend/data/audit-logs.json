@@ -1,6 +1,20 @@
 {
   "bagmane_virgo": [
     {
+      "id": "audit_Tcjqd7F7MH",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T10:56:17.951Z"
+    },
+    {
       "id": "audit_8JjAAyANKG",
       "outletId": "bagmane_virgo",
       "action": "WHATSAPP_MENU_SHARED",
