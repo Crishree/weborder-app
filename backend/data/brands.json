@@ -1,0 +1,17 @@
+[
+  {
+    "id": "neubar",
+    "name": "Neubar",
+    "customerAppBaseUrl": "https://neubar.pikquik.com",
+    "heroEyebrow": "Neubar Corporate Counter",
+    "heroTitle": "A Bowl Full of Life",
+    "heroSubtitle": "Order ahead. Pay online. Pick up with your code.",
+    "logoText": "Neubar",
+    "logoUrl": "",
+    "primaryColor": "#007a63",
+    "accentColor": "#ffd84d",
+    "accentTextColor": "#202020",
+    "backgroundColor": "#fffaf0",
+    "surfaceColor": "#ffffff"
+  }
+]

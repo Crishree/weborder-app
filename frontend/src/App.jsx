@@ -11,6 +11,18 @@ import { isTerminalPaymentStatus, loadOrderStatus } from './orderApi.js';
 import './styles.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
+const DEFAULT_BRANDING = {
+  brandName: 'Neubar',
+  logoText: 'Neubar',
+  heroEyebrow: 'Neubar Corporate Counter',
+  heroTitle: 'A Bowl Full of Life',
+  heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
+  primaryColor: '#007a63',
+  accentColor: '#ffd84d',
+  accentTextColor: '#202020',
+  backgroundColor: '#fffaf0',
+  surfaceColor: '#ffffff'
+};
 
 function getSessionId() {
   const params = new URLSearchParams(window.location.search);
@@ -20,6 +32,18 @@ function getSessionId() {
 function getOutletId() {
   const params = new URLSearchParams(window.location.search);
   return params.get('outlet') || '';
+}
+
+function BrandMark({ branding }) {
+  if (branding.logoUrl) {
+    return (
+      <div className="brand-mark brand-mark-image">
+        <img src={branding.logoUrl} alt={branding.brandName || branding.logoText || 'Brand logo'} />
+      </div>
+    );
+  }
+
+  return <div className="brand-mark">{branding.logoText || branding.brandName}</div>;
 }
 
 function MenuCard({ item, qty, onAdd, onRemove }) {
@@ -98,6 +122,7 @@ function CartDrawer({ open, onClose, cartItems, updateQty, checkout, loading }) 
 function SuccessPage() {
   const [order, setOrder] = useState(null);
   const [error, setError] = useState('');
+  const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const params = new URLSearchParams(window.location.search);
   const orderId = params.get('orderId');
 
@@ -113,6 +138,7 @@ function SuccessPage() {
         });
         if (cancelled) return;
         setOrder(nextOrder);
+        if (nextOrder.branding) setBranding({ ...DEFAULT_BRANDING, ...nextOrder.branding });
         setError('');
 
         if (!isTerminalPaymentStatus(nextOrder.paymentStatus)) {
@@ -133,11 +159,12 @@ function SuccessPage() {
   }, [orderId]);
 
   if (error) return <div className="page center"><h1>Something went wrong</h1><p>{error}</p></div>;
-  if (!order) return <div className="page center"><h1>Confirming your order...</h1></div>;
+  if (!order) return <div className="page center themed-page" style={getThemeStyle(branding)}><h1>Confirming your order...</h1></div>;
 
   if (order.paymentStatus !== 'PAID') {
     return (
       <div className="page success-page">
+        <BrandMark branding={branding} />
         <div className="success-card">
           <p className="badge">Payment pending</p>
           <h1>Waiting for payment confirmation</h1>
@@ -151,11 +178,12 @@ function SuccessPage() {
   }
 
   return (
-    <div className="page success-page">
+    <div className="page success-page themed-page" style={getThemeStyle(branding)}>
+      <BrandMark branding={branding} />
       <div className="success-card">
         <p className="badge">Payment received</p>
         <h1>Order Confirmed ✅</h1>
-        <p>Show this pickup code at the Neubar counter.</p>
+        <p>Show this pickup code at the {branding.brandName || 'pickup'} counter.</p>
         <div className="pickup-code">{order.pickupCode}</div>
         <p><strong>Order:</strong> {order.id}</p>
         <p><strong>Total:</strong> ₹{order.total}</p>
@@ -166,6 +194,7 @@ function SuccessPage() {
 
 function App() {
   const [menu, setMenu] = useState([]);
+  const [branding, setBranding] = useState(DEFAULT_BRANDING);
   const [cart, setCart] = useState({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -181,6 +210,7 @@ function App() {
       const res = await fetch(`${API_BASE}/api/menu${suffix}`);
       const data = await res.json();
       setMenu(data.menu || []);
+      setBranding({ ...DEFAULT_BRANDING, ...(data.brand || {}) });
     }
     if (!isSuccess) loadMenu();
   }, [isSuccess, outletId]);
@@ -216,11 +246,12 @@ function App() {
   if (isSuccess) return <SuccessPage />;
 
   return (
-    <div className="page">
+    <div className="page themed-page" style={getThemeStyle(branding)}>
       <header className="hero">
-        <p className="eyebrow">Neubar Corporate Counter</p>
-        <h1>A Bowl Full of Life</h1>
-        <p>Order ahead. Pay online. Pick up with your code.</p>
+        <BrandMark branding={branding} />
+        <p className="eyebrow">{branding.heroEyebrow}</p>
+        <h1>{branding.heroTitle}</h1>
+        <p>{branding.heroSubtitle}</p>
       </header>
 
       {error && <div className="error-box">{error}</div>}
@@ -254,6 +285,16 @@ function App() {
       />
     </div>
   );
+}
+
+function getThemeStyle(branding) {
+  return {
+    '--brand-primary': branding.primaryColor || DEFAULT_BRANDING.primaryColor,
+    '--brand-accent': branding.accentColor || DEFAULT_BRANDING.accentColor,
+    '--brand-accent-text': branding.accentTextColor || DEFAULT_BRANDING.accentTextColor,
+    '--brand-background': branding.backgroundColor || DEFAULT_BRANDING.backgroundColor,
+    '--brand-surface': branding.surfaceColor || DEFAULT_BRANDING.surfaceColor
+  };
 }
 
 createRoot(document.getElementById('root')).render(<App />);

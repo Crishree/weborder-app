@@ -17,11 +17,13 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const MENU_FILE = process.env.MENU_FILE || path.join(__dirname, '..', 'data', 'menu.json');
 const OUTLETS_FILE = process.env.OUTLETS_FILE || path.join(__dirname, '..', 'data', 'outlets.json');
+const BRANDS_FILE = process.env.BRANDS_FILE || path.join(__dirname, '..', 'data', 'brands.json');
 let sessionsFile = process.env.SESSIONS_FILE || path.join(__dirname, '..', 'data', 'sessions.json');
 let ordersFile = process.env.ORDERS_FILE || path.join(__dirname, '..', 'data', 'orders.json');
 let imageManifestFile = process.env.IMAGE_MANIFEST_FILE || path.join(__dirname, '..', 'data', 'uploaded-images.json');
 let auditLogFile = process.env.AUDIT_LOG_FILE || path.join(__dirname, '..', 'data', 'audit-logs.json');
 let whatsappEventsFile = process.env.WHATSAPP_EVENTS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-events.json');
+let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-campaigns.json');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 
 app.use(cors());
@@ -36,9 +38,28 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 const sessions = new Map();
 const orders = new Map();
 
+const defaultBrands = [
+  {
+    id: 'neubar',
+    name: 'Neubar',
+    customerAppBaseUrl: process.env.FRONTEND_BASE_URL || 'http://localhost:5173',
+    heroEyebrow: 'Neubar Corporate Counter',
+    heroTitle: 'A Bowl Full of Life',
+    heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
+    logoText: 'Neubar',
+    logoUrl: '',
+    primaryColor: '#007a63',
+    accentColor: '#ffd84d',
+    accentTextColor: '#202020',
+    backgroundColor: '#fffaf0',
+    surfaceColor: '#ffffff'
+  }
+];
+
 const defaultOutlets = [
   {
     id: 'bagmane_virgo',
+    brandId: 'neubar',
     name: 'Bagmane Virgo',
     status: 'ACTIVE',
     pickupLabel: 'Neubar Corporate Counter',
@@ -54,6 +75,7 @@ const defaultOutlets = [
   },
   {
     id: 'manyata_tower',
+    brandId: 'neubar',
     name: 'Manyata Tower',
     status: 'INACTIVE',
     pickupLabel: 'Neubar Tower Counter',
@@ -169,12 +191,51 @@ const upload = multer({
   }
 });
 
+let brands = loadBrandsFromDisk();
 let outlets = loadOutletsFromDisk();
 let menusByOutlet = loadMenusFromDisk();
 let uploadedImagesByOutlet = loadUploadedImagesFromDisk();
 let auditLogsByOutlet = loadAuditLogsFromDisk();
 let whatsappEvents = loadWhatsAppEventsFromDisk();
+let whatsappCampaigns = loadWhatsAppCampaignsFromDisk();
 loadRuntimeStoresFromDisk();
+
+function normalizeBrands(rawBrands) {
+  if (!Array.isArray(rawBrands) || rawBrands.length === 0) {
+    throw new Error('Brands must be a non-empty array');
+  }
+
+  const seenIds = new Set();
+  return rawBrands.map((brand, index) => {
+    if (!brand || typeof brand !== 'object') {
+      throw new Error(`Brand at index ${index} must be an object`);
+    }
+
+    const normalizedBrand = {
+      id: String(brand.id || '').trim(),
+      name: String(brand.name || '').trim(),
+      customerAppBaseUrl: String(brand.customerAppBaseUrl || process.env.FRONTEND_BASE_URL || 'http://localhost:5173').trim().replace(/\/+$/, ''),
+      heroEyebrow: String(brand.heroEyebrow || brand.name || '').trim(),
+      heroTitle: String(brand.heroTitle || 'Order ahead, pick up faster').trim(),
+      heroSubtitle: String(brand.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.').trim(),
+      logoText: String(brand.logoText || brand.name || '').trim(),
+      logoUrl: String(brand.logoUrl || '').trim(),
+      primaryColor: String(brand.primaryColor || '#007a63').trim(),
+      accentColor: String(brand.accentColor || '#ffd84d').trim(),
+      accentTextColor: String(brand.accentTextColor || '#202020').trim(),
+      backgroundColor: String(brand.backgroundColor || '#fffaf0').trim(),
+      surfaceColor: String(brand.surfaceColor || '#ffffff').trim()
+    };
+
+    if (!normalizedBrand.id) throw new Error(`Brand at index ${index} is missing id`);
+    if (seenIds.has(normalizedBrand.id)) throw new Error(`Duplicate brand id: ${normalizedBrand.id}`);
+    if (!normalizedBrand.name) throw new Error(`Brand ${normalizedBrand.id} is missing name`);
+    if (!normalizedBrand.customerAppBaseUrl) throw new Error(`Brand ${normalizedBrand.id} is missing customer app base URL`);
+
+    seenIds.add(normalizedBrand.id);
+    return normalizedBrand;
+  });
+}
 
 function normalizeOutlets(rawOutlets) {
   if (!Array.isArray(rawOutlets) || rawOutlets.length === 0) {
@@ -189,10 +250,12 @@ function normalizeOutlets(rawOutlets) {
 
     const normalizedOutlet = {
       id: String(outlet.id || '').trim(),
+      brandId: String(outlet.brandId || defaultBrands[0]?.id || '').trim(),
       name: String(outlet.name || '').trim(),
       status: String(outlet.status || 'ACTIVE').trim().toUpperCase(),
       pickupLabel: String(outlet.pickupLabel || '').trim(),
       address: String(outlet.address || '').trim(),
+      customerAppBaseUrl: String(outlet.customerAppBaseUrl || '').trim().replace(/\/+$/, ''),
       latitude: outlet.latitude === '' || outlet.latitude == null ? null : Number(outlet.latitude),
       longitude: outlet.longitude === '' || outlet.longitude == null ? null : Number(outlet.longitude),
       locationKeywords: Array.isArray(outlet.locationKeywords)
@@ -210,7 +273,9 @@ function normalizeOutlets(rawOutlets) {
 
     if (!normalizedOutlet.id) throw new Error(`Outlet at index ${index} is missing id`);
     if (seenIds.has(normalizedOutlet.id)) throw new Error(`Duplicate outlet id: ${normalizedOutlet.id}`);
+    if (!normalizedOutlet.brandId) throw new Error(`Outlet ${normalizedOutlet.id} is missing brand id`);
     if (!normalizedOutlet.name) throw new Error(`Outlet ${normalizedOutlet.id} is missing name`);
+    if (!getBrand(normalizedOutlet.brandId)) throw new Error(`Outlet ${normalizedOutlet.id} references unknown brand ${normalizedOutlet.brandId}`);
     if (!['ACTIVE', 'INACTIVE'].includes(normalizedOutlet.status)) {
       throw new Error(`Outlet ${normalizedOutlet.id} has invalid status`);
     }
@@ -222,6 +287,64 @@ function normalizeOutlets(rawOutlets) {
     seenIds.add(normalizedOutlet.id);
     return normalizedOutlet;
   });
+}
+
+function loadBrandsFromDisk() {
+  try {
+    const raw = readFileSync(BRANDS_FILE, 'utf8');
+    return normalizeBrands(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load brands file, using defaults instead.', error.message);
+    }
+    persistBrands(defaultBrands);
+    return normalizeBrands(defaultBrands);
+  }
+}
+
+function persistBrands(nextBrands) {
+  mkdirSync(path.dirname(BRANDS_FILE), { recursive: true });
+  writeFileSync(BRANDS_FILE, JSON.stringify(nextBrands, null, 2));
+}
+
+function normalizeWhatsAppCampaign(entry, index = 0) {
+  if (!entry || typeof entry !== 'object') {
+    throw new Error(`Campaign at index ${index} must be an object`);
+  }
+
+  return {
+    id: String(entry.id || '').trim() || `campaign_${index + 1}`,
+    outletId: String(entry.outletId || '').trim(),
+    brandId: String(entry.brandId || '').trim(),
+    imageUrl: String(entry.imageUrl || '').trim(),
+    caption: String(entry.caption || '').trim(),
+    recipients: Array.isArray(entry.recipients)
+      ? entry.recipients.map((value) => normalizeWhatsAppRecipient(value)).filter(Boolean)
+      : [],
+    sentCount: Number(entry.sentCount || 0),
+    failedCount: Number(entry.failedCount || 0),
+    createdAt: String(entry.createdAt || '').trim() || new Date().toISOString(),
+    createdBy: String(entry.createdBy || 'admin-ui').trim()
+  };
+}
+
+function loadWhatsAppCampaignsFromDisk() {
+  try {
+    const raw = readFileSync(whatsappCampaignsFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.map((entry, index) => normalizeWhatsAppCampaign(entry, index)) : [];
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load WhatsApp campaigns, using empty list instead.', error.message);
+    }
+    persistWhatsAppCampaigns([]);
+    return [];
+  }
+}
+
+function persistWhatsAppCampaigns(nextCampaigns = whatsappCampaigns) {
+  mkdirSync(path.dirname(whatsappCampaignsFile), { recursive: true });
+  writeFileSync(whatsappCampaignsFile, JSON.stringify(nextCampaigns, null, 2));
 }
 
 function loadOutletsFromDisk() {
@@ -616,6 +739,60 @@ export function getOutlets() {
   return [...outlets];
 }
 
+export function getBrands() {
+  return [...brands];
+}
+
+function getBrand(brandId) {
+  return brands.find((brand) => brand.id === brandId) || null;
+}
+
+function getOutlet(outletId) {
+  return outlets.find((outlet) => outlet.id === outletId) || null;
+}
+
+function getBrandForOutlet(outletId) {
+  const outlet = getOutlet(outletId);
+  return getBrand(outlet?.brandId);
+}
+
+function getBrandingForOutlet(outletId) {
+  const outlet = getOutlet(outletId);
+  const brand = getBrandForOutlet(outletId);
+  return {
+    outletId: outlet?.id || outletId || getDefaultOutletId(),
+    brandId: brand?.id || outlet?.brandId || defaultBrands[0]?.id || 'default',
+    brandName: brand?.name || outlet?.name || 'Brand',
+    logoText: brand?.logoText || brand?.name || outlet?.name || 'Brand',
+    logoUrl: brand?.logoUrl || '',
+    heroEyebrow: brand?.heroEyebrow || outlet?.pickupLabel || 'Pickup counter',
+    heroTitle: brand?.heroTitle || 'Order ahead, pick up faster',
+    heroSubtitle: brand?.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.',
+    primaryColor: brand?.primaryColor || '#007a63',
+    accentColor: brand?.accentColor || '#ffd84d',
+    accentTextColor: brand?.accentTextColor || '#202020',
+    backgroundColor: brand?.backgroundColor || '#fffaf0',
+    surfaceColor: brand?.surfaceColor || '#ffffff',
+    outletName: outlet?.name || '',
+    pickupLabel: outlet?.pickupLabel || '',
+    address: outlet?.address || ''
+  };
+}
+
+export function replaceBrands(nextBrands, { persist = true } = {}) {
+  const normalizedBrands = normalizeBrands(nextBrands);
+  const brandIds = new Set(normalizedBrands.map((brand) => brand.id));
+  const invalidOutlet = outlets.find((outlet) => !brandIds.has(outlet.brandId));
+  if (invalidOutlet) {
+    throw new Error(`Cannot save brands because outlet ${invalidOutlet.id} references missing brand ${invalidOutlet.brandId}`);
+  }
+  brands = normalizedBrands;
+  if (persist) {
+    persistBrands(normalizedBrands);
+  }
+  return normalizedBrands;
+}
+
 export function replaceOutlets(nextOutlets, { persist = true } = {}) {
   const normalizedOutlets = normalizeOutlets(nextOutlets);
   outlets = normalizedOutlets;
@@ -638,6 +815,36 @@ export function replaceMenu(nextMenu, { outletId = getDefaultOutletId(), persist
     persistMenus(menusByOutlet);
   }
   return normalizedMenu;
+}
+
+function listAudienceByOutlet(outletId) {
+  const seen = new Map();
+  listOrdersByOutlet(outletId).forEach((order) => {
+    const mobile = normalizeWhatsAppRecipient(order.customerMobile);
+    if (!mobile) return;
+    if (!seen.has(mobile)) {
+      seen.set(mobile, {
+        customerMobile: mobile,
+        lastOrderId: order.id,
+        lastOrderedAt: order.createdAt,
+        totalOrders: 1
+      });
+      return;
+    }
+
+    const current = seen.get(mobile);
+    current.totalOrders += 1;
+    if (String(order.createdAt).localeCompare(String(current.lastOrderedAt)) > 0) {
+      current.lastOrderedAt = order.createdAt;
+      current.lastOrderId = order.id;
+    }
+  });
+
+  return [...seen.values()].sort((left, right) => String(right.lastOrderedAt).localeCompare(String(left.lastOrderedAt)));
+}
+
+function listWhatsAppCampaigns(outletId = '') {
+  return whatsappCampaigns.filter((campaign) => !outletId || campaign.outletId === outletId);
 }
 
 function parseCsvRow(line) {
@@ -826,8 +1033,14 @@ function updateSession(sessionId, patch) {
 }
 
 function buildOrderLink({ sessionId, outletId, channel = 'whatsapp' }) {
-  const frontendBaseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5173';
+  const frontendBaseUrl = getCustomerAppBaseUrl(outletId);
   return `${frontendBaseUrl}?session=${encodeURIComponent(sessionId)}&outlet=${encodeURIComponent(outletId)}&channel=${encodeURIComponent(channel)}`;
+}
+
+function getCustomerAppBaseUrl(outletId) {
+  const outlet = getOutlet(outletId);
+  const brand = getBrand(outlet?.brandId);
+  return String(outlet?.customerAppBaseUrl || brand?.customerAppBaseUrl || process.env.FRONTEND_BASE_URL || 'http://localhost:5173').trim().replace(/\/+$/, '');
 }
 
 function createOrRefreshWhatsAppSession({ customerMobile, outletId, resolutionSource }) {
@@ -1012,7 +1225,7 @@ function normalizeWhatsAppRecipient(value) {
     .replace(/[^\d+]/g, '');
 }
 
-async function sendWhatsAppViaMeta({ to, text }) {
+async function sendWhatsAppViaMeta(payload) {
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const graphVersion = process.env.WHATSAPP_GRAPH_VERSION || 'v25.0';
@@ -1020,17 +1233,6 @@ async function sendWhatsAppViaMeta({ to, text }) {
   if (!accessToken || !phoneNumberId || !whatsappFetch) {
     return null;
   }
-
-  const payload = {
-    messaging_product: 'whatsapp',
-    recipient_type: 'individual',
-    to: normalizeWhatsAppRecipient(to),
-    type: 'text',
-    text: {
-      preview_url: false,
-      body: text
-    }
-  };
 
   const response = await whatsappFetch(`https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`, {
     method: 'POST',
@@ -1064,7 +1266,16 @@ async function sendWhatsAppViaMeta({ to, text }) {
 
 const whatsappProvider = {
   async sendMessage({ to, text }) {
-    const metaResult = await sendWhatsAppViaMeta({ to, text });
+    const metaResult = await sendWhatsAppViaMeta({
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: normalizeWhatsAppRecipient(to),
+      type: 'text',
+      text: {
+        preview_url: false,
+        body: text
+      }
+    });
     if (metaResult) {
       console.log('WHATSAPP_PROVIDER_META_MESSAGE', metaResult.response);
     } else {
@@ -1076,6 +1287,33 @@ const whatsappProvider = {
       eventType: 'message',
       summary: text.split('\n')[0] || 'Outbound WhatsApp message',
       payload: metaResult || { provider: 'placeholder', to, text },
+      createdAt: new Date().toISOString()
+    });
+    return { ok: true, provider: metaResult?.provider || 'placeholder' };
+  },
+  async sendImageMessage({ to, imageUrl, caption = '' }) {
+    const payload = {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: normalizeWhatsAppRecipient(to),
+      type: 'image',
+      image: {
+        link: imageUrl,
+        caption
+      }
+    };
+    const metaResult = await sendWhatsAppViaMeta(payload);
+    if (metaResult) {
+      console.log('WHATSAPP_PROVIDER_META_IMAGE', metaResult.response);
+    } else {
+      console.log('WHATSAPP_PROVIDER_PLACEHOLDER_IMAGE', { to, imageUrl, caption });
+    }
+    recordWhatsAppEvent({
+      direction: 'outbound',
+      customerMobile: to,
+      eventType: 'image_message',
+      summary: caption || 'Outbound WhatsApp image message',
+      payload: metaResult || { provider: 'placeholder', to, imageUrl, caption },
       createdAt: new Date().toISOString()
     });
     return { ok: true, provider: metaResult?.provider || 'placeholder' };
@@ -1219,6 +1457,19 @@ function renderAdminMenuPage() {
 
       <div class="grid">
         <section class="panel">
+          <h2>Brands</h2>
+          <p class="hint">Manage shared customer app domains here. Multiple outlets can point to one brand so they share the same customer-facing app domain.</p>
+          <label for="brand-select">Current Brand</label>
+          <select id="brand-select"></select>
+          <div class="actions">
+            <button class="secondary" id="add-brand" type="button">Add Brand</button>
+            <button class="primary" id="save-brands" type="button">Save Brands</button>
+          </div>
+          <div id="brand-status" class="status"></div>
+          <div id="brand-form" class="outlet-grid"></div>
+        </section>
+
+        <section class="panel">
           <h2>Outlets</h2>
           <p class="hint">Switch the active outlet context and manage outlet-level configuration here. Menu, order, and payment views below will follow the selected outlet.</p>
           <label for="outlet-select">Current Outlet</label>
@@ -1315,6 +1566,22 @@ function renderAdminMenuPage() {
           </div>
           <div id="whatsapp-events-table"></div>
         </section>
+
+        <section class="panel">
+          <h2>WhatsApp Marketing</h2>
+          <p class="hint">Select previous customers from this outlet, add an image URL and caption, and send a simple daily WhatsApp campaign.</p>
+          <div class="actions">
+            <button class="secondary" id="refresh-marketing-audience" type="button">Refresh Audience</button>
+            <button class="primary" id="send-marketing-campaign" type="button">Send Campaign</button>
+          </div>
+          <div id="marketing-status" class="status"></div>
+          <label for="marketing-image-url">Campaign Image URL</label>
+          <input id="marketing-image-url" type="text" placeholder="Use the uploaded image URL from the Image Upload panel" />
+          <label for="marketing-caption">Caption</label>
+          <textarea id="marketing-caption" style="min-height: 88px;"></textarea>
+          <div id="marketing-audience"></div>
+          <div id="marketing-campaigns"></div>
+        </section>
       </div>
     </div>
 
@@ -1331,7 +1598,10 @@ function renderAdminMenuPage() {
       const loadButton = document.getElementById('load-current');
       const statusBox = document.getElementById('status');
       const imageStatusBox = document.getElementById('image-status');
+      const brandStatusBox = document.getElementById('brand-status');
       const outletStatusBox = document.getElementById('outlet-status');
+      const brandSelect = document.getElementById('brand-select');
+      const brandForm = document.getElementById('brand-form');
       const outletSelect = document.getElementById('outlet-select');
       const outletForm = document.getElementById('outlet-form');
       const ordersStatusBox = document.getElementById('orders-status');
@@ -1341,12 +1611,24 @@ function renderAdminMenuPage() {
       const auditTable = document.getElementById('audit-table');
       const whatsappEventsTable = document.getElementById('whatsapp-events-table');
       const refreshWhatsAppEventsButton = document.getElementById('refresh-whatsapp-events');
+      const marketingStatusBox = document.getElementById('marketing-status');
+      const marketingAudience = document.getElementById('marketing-audience');
+      const marketingCampaigns = document.getElementById('marketing-campaigns');
+      const marketingImageUrl = document.getElementById('marketing-image-url');
+      const marketingCaption = document.getElementById('marketing-caption');
+      const refreshMarketingAudienceButton = document.getElementById('refresh-marketing-audience');
+      const sendMarketingCampaignButton = document.getElementById('send-marketing-campaign');
       const preview = document.getElementById('preview');
       const menuItemsContainer = document.getElementById('menu-items');
       const categoryOptions = ['Lunch Bowls', 'South Indian Classics', 'Sides', 'Beverages', 'Breakfast', 'Snacks', 'Desserts'];
+      const addBrandButton = document.getElementById('add-brand');
+      const saveBrandsButton = document.getElementById('save-brands');
       const addOutletButton = document.getElementById('add-outlet');
       const saveOutletsButton = document.getElementById('save-outlets');
+      let brandState = [];
       let outletState = [];
+      let marketingAudienceState = [];
+      const selectedMarketingRecipients = new Set();
 
       function defaultItem() {
         return {
@@ -1364,10 +1646,12 @@ function renderAdminMenuPage() {
       function defaultOutlet() {
         return {
           id: '',
+          brandId: brandState[0]?.id || 'neubar',
           name: '',
           status: 'ACTIVE',
           pickupLabel: '',
           address: '',
+          customerAppBaseUrl: '',
           timezone: 'Asia/Kolkata',
           latitude: '',
           longitude: '',
@@ -1376,6 +1660,24 @@ function renderAdminMenuPage() {
           paymentMode: 'payment_link',
           petpoojaOutletId: '',
           supportPhone: ''
+        };
+      }
+
+      function defaultBrand() {
+        return {
+          id: '',
+          name: '',
+          customerAppBaseUrl: '',
+          heroEyebrow: '',
+          heroTitle: '',
+          heroSubtitle: '',
+          logoText: '',
+          logoUrl: '',
+          primaryColor: '#007a63',
+          accentColor: '#ffd84d',
+          accentTextColor: '#202020',
+          backgroundColor: '#fffaf0',
+          surfaceColor: '#ffffff'
         };
       }
 
@@ -1394,6 +1696,11 @@ function renderAdminMenuPage() {
         outletStatusBox.className = 'status show ' + type;
       }
 
+      function setBrandStatus(message, type) {
+        brandStatusBox.textContent = message;
+        brandStatusBox.className = 'status show ' + type;
+      }
+
       function setOrdersStatus(message, type) {
         ordersStatusBox.textContent = message;
         ordersStatusBox.className = message ? 'status show ' + type : 'status';
@@ -1402,6 +1709,11 @@ function renderAdminMenuPage() {
       function setPaymentsStatus(message, type) {
         paymentsStatusBox.textContent = message;
         paymentsStatusBox.className = message ? 'status show ' + type : 'status';
+      }
+
+      function setMarketingStatus(message, type) {
+        marketingStatusBox.textContent = message;
+        marketingStatusBox.className = message ? 'status show ' + type : 'status';
       }
 
       async function uploadImageFile(file) {
@@ -1556,6 +1868,69 @@ function renderAdminMenuPage() {
           '</tbody></table>';
       }
 
+      function renderMarketingAudience(audience) {
+        if (!audience.length) {
+          marketingAudience.innerHTML = '<p class="hint">No prior customers available for this outlet yet.</p>';
+          return;
+        }
+
+        marketingAudience.innerHTML =
+          '<table class="data-table"><thead><tr><th>Select</th><th>Customer</th><th>Last Order</th><th>Orders</th></tr></thead><tbody>' +
+          audience.map((entry) =>
+            '<tr>' +
+              '<td><input type="checkbox" class="marketing-recipient" data-mobile="' + escapeHtml(entry.customerMobile) + '"' + (selectedMarketingRecipients.has(entry.customerMobile) ? ' checked' : '') + ' /></td>' +
+              '<td>' + escapeHtml(entry.customerMobile) + '</td>' +
+              '<td>' + escapeHtml(entry.lastOrderId || '-') + '<br /><span class="hint">' + escapeHtml(entry.lastOrderedAt || '-') + '</span></td>' +
+              '<td>' + escapeHtml(String(entry.totalOrders || 0)) + '</td>' +
+            '</tr>'
+          ).join('') +
+          '</tbody></table>';
+      }
+
+      function renderMarketingCampaigns(campaigns) {
+        if (!campaigns.length) {
+          marketingCampaigns.innerHTML = '<p class="hint">No campaigns sent yet.</p>';
+          return;
+        }
+
+        marketingCampaigns.innerHTML =
+          '<table class="data-table"><thead><tr><th>When</th><th>Recipients</th><th>Sent</th><th>Failed</th><th>Image</th></tr></thead><tbody>' +
+          campaigns.map((campaign) =>
+            '<tr>' +
+              '<td>' + escapeHtml(campaign.createdAt) + '</td>' +
+              '<td>' + escapeHtml(String((campaign.recipients || []).length)) + '</td>' +
+              '<td>' + escapeHtml(String(campaign.sentCount || 0)) + '</td>' +
+              '<td>' + escapeHtml(String(campaign.failedCount || 0)) + '</td>' +
+              '<td><a href="' + escapeHtml(campaign.imageUrl) + '" target="_blank" rel="noreferrer">Open image</a></td>' +
+            '</tr>'
+          ).join('') +
+          '</tbody></table>';
+      }
+
+      function renderBrandSelector() {
+        brandSelect.innerHTML = brandState.map((brand, index) =>
+          '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(brand.name || brand.id || ('Brand ' + (index + 1))) + '</option>'
+        ).join('');
+      }
+
+      function renderBrandForm(selectedIndex) {
+        const brand = brandState[selectedIndex] || defaultBrand();
+        brandForm.innerHTML =
+          '<div><label>Brand ID</label><input type="text" data-brand-field="id" value="' + escapeHtml(brand.id) + '" /></div>' +
+          '<div><label>Brand Name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" /></div>' +
+          '<div><label>Customer App Base URL</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" /></div>' +
+          '<div><label>Hero Eyebrow</label><input type="text" data-brand-field="heroEyebrow" value="' + escapeHtml(brand.heroEyebrow || '') + '" /></div>' +
+          '<div><label>Hero Title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
+          '<div class="full"><label>Hero Subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
+          '<div><label>Logo Text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
+          '<div><label>Logo URL</label><input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" /></div>' +
+          '<div><label>Primary Color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +
+          '<div><label>Accent Color</label><input type="text" data-brand-field="accentColor" value="' + escapeHtml(brand.accentColor || '#ffd84d') + '" /></div>' +
+          '<div><label>Accent Text Color</label><input type="text" data-brand-field="accentTextColor" value="' + escapeHtml(brand.accentTextColor || '#202020') + '" /></div>' +
+          '<div><label>Background Color</label><input type="text" data-brand-field="backgroundColor" value="' + escapeHtml(brand.backgroundColor || '#fffaf0') + '" /></div>' +
+          '<div><label>Surface Color</label><input type="text" data-brand-field="surfaceColor" value="' + escapeHtml(brand.surfaceColor || '#ffffff') + '" /></div>';
+      }
+
       function renderOutletSelector() {
         outletSelect.innerHTML = outletState.map((outlet, index) =>
           '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(outlet.name || outlet.id || ('Outlet ' + (index + 1))) + '</option>'
@@ -1564,12 +1939,17 @@ function renderAdminMenuPage() {
 
       function renderOutletForm(selectedIndex) {
         const outlet = outletState[selectedIndex] || defaultOutlet();
+        const brandOptions = brandState.map((brand) =>
+          '<option value="' + escapeHtml(brand.id) + '"' + (outlet.brandId === brand.id ? ' selected' : '') + '>' + escapeHtml(brand.name || brand.id) + '</option>'
+        ).join('');
         outletForm.innerHTML =
           '<div><label>Outlet ID</label><input type="text" data-outlet-field="id" value="' + escapeHtml(outlet.id) + '" /></div>' +
+          '<div><label>Brand</label><select data-outlet-field="brandId">' + brandOptions + '</select></div>' +
           '<div><label>Outlet Name</label><input type="text" data-outlet-field="name" value="' + escapeHtml(outlet.name) + '" /></div>' +
           '<div><label>Status</label><select data-outlet-field="status"><option value="ACTIVE"' + (outlet.status === 'ACTIVE' ? ' selected' : '') + '>ACTIVE</option><option value="INACTIVE"' + (outlet.status === 'INACTIVE' ? ' selected' : '') + '>INACTIVE</option></select></div>' +
           '<div><label>Pickup Label</label><input type="text" data-outlet-field="pickupLabel" value="' + escapeHtml(outlet.pickupLabel) + '" /></div>' +
           '<div><label>Address</label><input type="text" data-outlet-field="address" value="' + escapeHtml(outlet.address) + '" /></div>' +
+          '<div><label>Outlet URL Override</label><input type="text" data-outlet-field="customerAppBaseUrl" value="' + escapeHtml(outlet.customerAppBaseUrl || '') + '" /></div>' +
           '<div><label>Latitude</label><input type="text" data-outlet-field="latitude" value="' + escapeHtml(outlet.latitude ?? '') + '" /></div>' +
           '<div><label>Longitude</label><input type="text" data-outlet-field="longitude" value="' + escapeHtml(outlet.longitude ?? '') + '" /></div>' +
           '<div><label>Location Keywords</label><input type="text" data-outlet-field="locationKeywords" value="' + escapeHtml(Array.isArray(outlet.locationKeywords) ? outlet.locationKeywords.join(', ') : outlet.locationKeywords || '') + '" /></div>' +
@@ -1590,9 +1970,27 @@ function renderAdminMenuPage() {
         outletSelect.value = String(selectedIndex);
       }
 
+      function syncBrandStateFromForm() {
+        const selectedIndex = Number(brandSelect.value || 0);
+        if (!brandState[selectedIndex]) return;
+        Array.from(brandForm.querySelectorAll('[data-brand-field]')).forEach((field) => {
+          brandState[selectedIndex][field.dataset.brandField] = field.value.trim();
+        });
+        renderBrandSelector();
+        brandSelect.value = String(selectedIndex);
+      }
+
       function getSelectedOutletId() {
         const selectedIndex = Number(outletSelect.value || 0);
         return outletState[selectedIndex]?.id || outletState[0]?.id || 'bagmane_virgo';
+      }
+
+      async function loadBrands() {
+        const res = await fetch('/api/admin/brands');
+        const data = await res.json();
+        brandState = data.brands || [];
+        renderBrandSelector();
+        renderBrandForm(0);
       }
 
       async function loadOutlets() {
@@ -1768,13 +2166,64 @@ function renderAdminMenuPage() {
         renderWhatsAppEvents(data.events || []);
       }
 
+      async function loadMarketingData() {
+        const outletId = getSelectedOutletId();
+        const [audienceRes, campaignsRes] = await Promise.all([
+          fetch('/api/admin/marketing/audience?outletId=' + encodeURIComponent(outletId)),
+          fetch('/api/admin/whatsapp-campaigns?outletId=' + encodeURIComponent(outletId))
+        ]);
+        const audienceData = await audienceRes.json();
+        const campaignsData = await campaignsRes.json();
+        if (!audienceRes.ok) throw new Error(audienceData.error || 'Could not load WhatsApp audience');
+        if (!campaignsRes.ok) throw new Error(campaignsData.error || 'Could not load WhatsApp campaigns');
+        marketingAudienceState = audienceData.audience || [];
+        selectedMarketingRecipients.clear();
+        renderMarketingAudience(marketingAudienceState);
+        renderMarketingCampaigns(campaignsData.campaigns || []);
+      }
+
+      brandSelect.addEventListener('change', () => {
+        renderBrandForm(Number(brandSelect.value || 0));
+      });
+
+      brandForm.addEventListener('input', () => {
+        syncBrandStateFromForm();
+      });
+
       outletSelect.addEventListener('change', () => {
         renderOutletForm(Number(outletSelect.value || 0));
-        Promise.all([loadCurrentMenu(), loadOrdersAndPayments()]).catch((error) => setStatus(error.message, 'error'));
+        Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData()]).catch((error) => setStatus(error.message, 'error'));
       });
 
       outletForm.addEventListener('input', () => {
         syncOutletStateFromForm();
+      });
+
+      addBrandButton.addEventListener('click', () => {
+        brandState.push(defaultBrand());
+        renderBrandSelector();
+        brandSelect.value = String(brandState.length - 1);
+        renderBrandForm(brandState.length - 1);
+      });
+
+      saveBrandsButton.addEventListener('click', async () => {
+        try {
+          syncBrandStateFromForm();
+          const res = await fetch('/api/admin/brands', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brands: brandState })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not save brands');
+          brandState = data.brands;
+          renderBrandSelector();
+          renderBrandForm(Number(brandSelect.value || 0));
+          renderOutletForm(Number(outletSelect.value || 0));
+          setBrandStatus('Brand settings saved.', 'ok');
+        } catch (error) {
+          setBrandStatus(error.message, 'error');
+        }
       });
 
       addOutletButton.addEventListener('click', () => {
@@ -1950,6 +2399,54 @@ function renderAdminMenuPage() {
         }
       });
 
+      refreshMarketingAudienceButton.addEventListener('click', async () => {
+        try {
+          await loadMarketingData();
+          setMarketingStatus('Loaded latest WhatsApp audience and campaign history.', 'ok');
+        } catch (error) {
+          setMarketingStatus(error.message, 'error');
+        }
+      });
+
+      marketingAudience.addEventListener('change', (event) => {
+        const checkbox = event.target.closest('.marketing-recipient');
+        if (!checkbox) return;
+        const mobile = checkbox.dataset.mobile;
+        if (!mobile) return;
+        if (checkbox.checked) {
+          selectedMarketingRecipients.add(mobile);
+        } else {
+          selectedMarketingRecipients.delete(mobile);
+        }
+      });
+
+      sendMarketingCampaignButton.addEventListener('click', async () => {
+        try {
+          const recipients = Array.from(selectedMarketingRecipients);
+          const imageUrl = marketingImageUrl.value.trim();
+          const caption = marketingCaption.value.trim();
+          if (!recipients.length) throw new Error('Select at least one customer before sending a campaign');
+          if (!imageUrl) throw new Error('Add an image URL for the campaign');
+
+          const res = await fetch('/api/admin/whatsapp-campaigns/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              outletId: getSelectedOutletId(),
+              recipients,
+              imageUrl,
+              caption
+            })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not send WhatsApp campaign');
+          setMarketingStatus('Campaign sent. Delivered: ' + (data.campaign?.sentCount || 0) + ', failed: ' + (data.campaign?.failedCount || 0) + '.', 'ok');
+          await loadMarketingData();
+        } catch (error) {
+          setMarketingStatus(error.message, 'error');
+        }
+      });
+
       uploadImageButton.addEventListener('click', async () => {
         try {
           const file = imageFileInput.files[0];
@@ -1994,7 +2491,9 @@ function renderAdminMenuPage() {
         }
       });
 
-      Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents()]).catch((error) => setStatus(error.message, 'error'));
+      loadBrands()
+        .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData()]))
+        .catch((error) => setStatus(error.message, 'error'));
     </script>
   </body>
 </html>`;
@@ -2028,7 +2527,7 @@ function calculateCart(items, outletId) {
 async function createRazorpayPaymentLink(order) {
   // TODO: Replace with Razorpay Payment Links API call.
   // Return the live payment link URL after integrating Razorpay.
-  return `${process.env.FRONTEND_BASE_URL || 'http://localhost:5173'}/success?orderId=${order.id}`;
+  return `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${order.id}`;
 }
 
 function buildPaymentRecord(order, paymentLink) {
@@ -2055,6 +2554,10 @@ async function pushOrderToPetpooja(order) {
 
 async function sendWhatsAppMessage(to, text) {
   return whatsappProvider.sendMessage({ to, text });
+}
+
+async function sendWhatsAppImageMessage(to, imageUrl, caption = '') {
+  return whatsappProvider.sendImageMessage({ to, imageUrl, caption });
 }
 
 function getSessionOrDefault({ sessionId, customerMobile, outletId }) {
@@ -2399,11 +2902,47 @@ app.get('/api/session/:sessionId', (req, res) => {
 });
 
 app.get('/api/menu', (req, res) => {
-  res.json({ menu: getMenu({ outletId: req.query.outletId }) });
+  const outletId = String(req.query.outletId || getDefaultOutletId());
+  res.json({
+    outletId,
+    brand: getBrandingForOutlet(outletId),
+    menu: getMenu({ outletId })
+  });
+});
+
+app.get('/api/branding', (req, res) => {
+  const outletId = String(req.query.outletId || getDefaultOutletId());
+  res.json({ branding: getBrandingForOutlet(outletId) });
 });
 
 app.get('/api/admin/outlets', (req, res) => {
   res.json({ outlets: getOutlets() });
+});
+
+app.get('/api/admin/brands', (req, res) => {
+  res.json({ brands: getBrands() });
+});
+
+app.post('/api/admin/brands', (req, res) => {
+  try {
+    const nextBrands = replaceBrands(req.body?.brands);
+    nextBrands.forEach((brand) => {
+      logAuditEvent({
+        outletId: null,
+        action: 'BRAND_SAVED',
+        entityType: 'brand',
+        entityId: brand.id,
+        summary: `Saved brand configuration for ${brand.name}`,
+        actor: 'admin-ui',
+        metadata: {
+          customerAppBaseUrl: brand.customerAppBaseUrl
+        }
+      });
+    });
+    res.json({ ok: true, brands: nextBrands });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 app.post('/api/admin/outlets', (req, res) => {
@@ -2438,6 +2977,87 @@ app.get('/api/admin/menu', (req, res) => {
 app.get('/api/admin/orders', (req, res) => {
   const outletId = String(req.query.outletId || '');
   res.json({ orders: listOrdersByOutlet(outletId) });
+});
+
+app.get('/api/admin/marketing/audience', (req, res) => {
+  const outletId = String(req.query.outletId || getDefaultOutletId());
+  res.json({ audience: listAudienceByOutlet(outletId) });
+});
+
+app.get('/api/admin/whatsapp-campaigns', (req, res) => {
+  const outletId = String(req.query.outletId || '');
+  res.json({ campaigns: listWhatsAppCampaigns(outletId) });
+});
+
+app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
+  try {
+    const outletId = String(req.body?.outletId || getDefaultOutletId()).trim();
+    const outlet = getOutlet(outletId);
+    if (!outlet) throw new Error('Outlet not found');
+
+    const recipients = Array.isArray(req.body?.recipients)
+      ? req.body.recipients.map((value) => normalizeWhatsAppRecipient(value)).filter(Boolean)
+      : [];
+    if (!recipients.length) throw new Error('Select at least one recipient');
+
+    const imageUrl = String(req.body?.imageUrl || '').trim();
+    if (!imageUrl) throw new Error('Image URL is required');
+
+    const caption = String(req.body?.caption || '').trim();
+    let sentCount = 0;
+    let failedCount = 0;
+
+    for (const recipient of recipients) {
+      try {
+        await sendWhatsAppImageMessage(recipient, imageUrl, caption);
+        sentCount += 1;
+      } catch (error) {
+        failedCount += 1;
+        logAuditEvent({
+          outletId,
+          action: 'WHATSAPP_CAMPAIGN_SEND_FAILED',
+          entityType: 'whatsapp_campaign',
+          entityId: recipient,
+          summary: `Failed WhatsApp campaign send to ${recipient}`,
+          actor: 'admin-ui',
+          metadata: { error: error.message, imageUrl }
+        });
+      }
+    }
+
+    const campaign = normalizeWhatsAppCampaign({
+      id: `campaign_${nanoid(10)}`,
+      outletId,
+      brandId: outlet.brandId,
+      imageUrl,
+      caption,
+      recipients,
+      sentCount,
+      failedCount,
+      createdAt: new Date().toISOString(),
+      createdBy: 'admin-ui'
+    });
+    whatsappCampaigns = [campaign, ...whatsappCampaigns].slice(0, 100);
+    persistWhatsAppCampaigns();
+
+    logAuditEvent({
+      outletId,
+      action: 'WHATSAPP_CAMPAIGN_SENT',
+      entityType: 'whatsapp_campaign',
+      entityId: campaign.id,
+      summary: `Sent WhatsApp image campaign to ${sentCount} recipients`,
+      actor: 'admin-ui',
+      metadata: {
+        imageUrl,
+        sentCount,
+        failedCount
+      }
+    });
+
+    res.json({ ok: true, campaign });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 app.get('/api/admin/payments', (req, res) => {
@@ -2647,7 +3267,10 @@ app.post('/razorpay/webhook', async (req, res) => {
 app.get('/api/orders/:orderId', (req, res) => {
   const order = orders.get(req.params.orderId);
   if (!order) return res.status(404).json({ error: 'Order not found' });
-  res.json(order);
+  res.json({
+    ...order,
+    branding: getBrandingForOutlet(order.outletId)
+  });
 });
 
 app.post('/api/verify-pickup', (req, res) => {

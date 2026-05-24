@@ -1,6 +1,7 @@
 [
   {
     "id": "bagmane_virgo",
+    "brandId": "neubar",
     "name": "Bagmane Virgo",
     "status": "ACTIVE",
     "pickupLabel": "Neubar Corporate Counter",
@@ -13,6 +14,7 @@
   },
   {
     "id": "manyata_tower",
+    "brandId": "neubar",
     "name": "Manyata Tower",
     "status": "INACTIVE",
     "pickupLabel": "Neubar Tower Counter",
