@@ -8,7 +8,7 @@ h1 { margin: 0; font-size: 34px; line-height: 0.95; }
 .hero p:last-child { margin: 12px 0 0; font-size: 15px; }
 .brand-mark { display: inline-flex; align-items: center; justify-content: center; padding: 8px 14px; border-radius: 999px; background: color-mix(in srgb, var(--brand-primary, #007a63) 12%, white); color: var(--brand-primary, #007a63); font-size: 12px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }
 .brand-mark-image { padding: 10px 14px; }
-.brand-mark-image img { display: block; max-height: 36px; max-width: 160px; object-fit: contain; }
+.brand-mark-image img { display: block; width: var(--brand-logo-width, 160px); height: var(--brand-logo-height, 36px); object-fit: contain; }
 .menu-list { display: grid; gap: 14px; }
 .menu-card { display: grid; grid-template-columns: 116px 1fr; overflow: hidden; border-radius: 24px; background: var(--brand-surface, #ffffff); box-shadow: 0 10px 24px rgba(0,0,0,0.07); border: 1px solid rgba(0,0,0,0.05); }
 .menu-card img { width: 116px; height: 100%; min-height: 152px; object-fit: cover; }

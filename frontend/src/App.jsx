@@ -17,6 +17,9 @@ const DEFAULT_BRANDING = {
   heroEyebrow: 'Neubar Corporate Counter',
   heroTitle: 'A Bowl Full of Life',
   heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
+  logoUrl: '',
+  logoWidth: 160,
+  logoHeight: 36,
   primaryColor: '#007a63',
   accentColor: '#ffd84d',
   accentTextColor: '#202020',
@@ -43,7 +46,13 @@ function getOutletId() {
 function BrandMark({ branding }) {
   if (branding.logoUrl) {
     return (
-      <div className="brand-mark brand-mark-image">
+      <div
+        className="brand-mark brand-mark-image"
+        style={{
+          '--brand-logo-width': `${branding.logoWidth || DEFAULT_BRANDING.logoWidth}px`,
+          '--brand-logo-height': `${branding.logoHeight || DEFAULT_BRANDING.logoHeight}px`
+        }}
+      >
         <img src={branding.logoUrl} alt={branding.brandName || branding.logoText || 'Brand logo'} />
       </div>
     );

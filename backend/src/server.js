@@ -48,6 +48,8 @@ const defaultBrands = [
     heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
     logoText: 'Neubar',
     logoUrl: '',
+    logoWidth: 160,
+    logoHeight: 36,
     primaryColor: '#007a63',
     accentColor: '#ffd84d',
     accentTextColor: '#202020',
@@ -220,6 +222,8 @@ function normalizeBrands(rawBrands) {
       heroSubtitle: String(brand.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.').trim(),
       logoText: String(brand.logoText || brand.name || '').trim(),
       logoUrl: String(brand.logoUrl || '').trim(),
+      logoWidth: Number(brand.logoWidth || 160),
+      logoHeight: Number(brand.logoHeight || 36),
       primaryColor: String(brand.primaryColor || '#007a63').trim(),
       accentColor: String(brand.accentColor || '#ffd84d').trim(),
       accentTextColor: String(brand.accentTextColor || '#202020').trim(),
@@ -765,6 +769,8 @@ function getBrandingForOutlet(outletId) {
     brandName: brand?.name || outlet?.name || 'Brand',
     logoText: brand?.logoText || brand?.name || outlet?.name || 'Brand',
     logoUrl: brand?.logoUrl || '',
+    logoWidth: Number(brand?.logoWidth || 160),
+    logoHeight: Number(brand?.logoHeight || 36),
     heroEyebrow: brand?.heroEyebrow || outlet?.pickupLabel || 'Pickup counter',
     heroTitle: brand?.heroTitle || 'Order ahead, pick up faster',
     heroSubtitle: brand?.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.',
@@ -1682,6 +1688,8 @@ function renderAdminMenuPage() {
           heroSubtitle: '',
           logoText: '',
           logoUrl: '',
+          logoWidth: '160',
+          logoHeight: '36',
           primaryColor: '#007a63',
           accentColor: '#ffd84d',
           accentTextColor: '#202020',
@@ -1932,7 +1940,12 @@ function renderAdminMenuPage() {
           '<div><label>Hero Title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
           '<div class="full"><label>Hero Subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
           '<div><label>Logo Text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
-          '<div><label>Logo URL</label><input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" /></div>' +
+          '<div><label>Logo Width (px)</label><input type="number" min="40" max="320" step="1" data-brand-field="logoWidth" value="' + escapeHtml(brand.logoWidth || 160) + '" /></div>' +
+          '<div><label>Logo Height (px)</label><input type="number" min="20" max="120" step="1" data-brand-field="logoHeight" value="' + escapeHtml(brand.logoHeight || 36) + '" /></div>' +
+          '<div class="full"><label>Brand Logo</label><div class="image-tools"><label class="file-label" for="brand-logo-file">Upload Logo</label><input id="brand-logo-file" type="file" accept="image/*" data-brand-logo-file="true" /></div>' +
+          '<input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" placeholder="Logo will be uploaded and linked automatically" readonly />' +
+          (brand.logoUrl ? '<div style="margin-top:8px;"><img class="image-preview" src="' + escapeHtml(brand.logoUrl) + '" alt="' + escapeHtml(brand.name || 'Brand logo') + '" style="max-width:' + escapeHtml(String(brand.logoWidth || 160)) + 'px; max-height:' + escapeHtml(String(brand.logoHeight || 36)) + 'px; width:auto; height:auto;" /></div>' : '') +
+          '</div>' +
           '<div><label>Primary Color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +
           '<div><label>Accent Color</label><input type="text" data-brand-field="accentColor" value="' + escapeHtml(brand.accentColor || '#ffd84d') + '" /></div>' +
           '<div><label>Accent Text Color</label><input type="text" data-brand-field="accentTextColor" value="' + escapeHtml(brand.accentTextColor || '#202020') + '" /></div>' +
@@ -2197,6 +2210,26 @@ function renderAdminMenuPage() {
 
       brandForm.addEventListener('input', () => {
         syncBrandStateFromForm();
+      });
+
+      brandForm.addEventListener('change', async (event) => {
+        const fileInput = event.target.closest('[data-brand-logo-file="true"]');
+        if (!fileInput) return;
+        try {
+          const file = fileInput.files[0];
+          if (!file) return;
+          const imageUrl = await uploadImageFile(file);
+          const logoField = brandForm.querySelector('[data-brand-field="logoUrl"]');
+          if (logoField) {
+            logoField.value = imageUrl;
+          }
+          syncBrandStateFromForm();
+          renderBrandForm(Number(brandSelect.value || 0));
+          setBrandStatus('Brand logo uploaded and linked.', 'ok');
+          await loadOrdersAndPayments();
+        } catch (error) {
+          setBrandStatus(error.message, 'error');
+        }
       });
 
       outletSelect.addEventListener('change', () => {
