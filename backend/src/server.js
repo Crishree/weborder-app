@@ -1580,9 +1580,8 @@ function renderAdminMenuPage() {
           <div id="marketing-status" class="status"></div>
           <label for="marketing-image-file">Campaign Image</label>
           <div class="image-tools">
-            <label class="file-label" for="marketing-image-file">Choose Image</label>
+            <label class="file-label" for="marketing-image-file">Upload Campaign Image</label>
             <input id="marketing-image-file" type="file" accept="image/*" />
-            <button class="secondary" id="upload-marketing-image" type="button">Upload Campaign Image</button>
           </div>
           <label for="marketing-image-url">Campaign Image URL</label>
           <input id="marketing-image-url" type="text" placeholder="Upload an image or paste an existing public image URL" />
@@ -1624,7 +1623,6 @@ function renderAdminMenuPage() {
       const marketingAudience = document.getElementById('marketing-audience');
       const marketingCampaigns = document.getElementById('marketing-campaigns');
       const marketingImageFile = document.getElementById('marketing-image-file');
-      const uploadMarketingImageButton = document.getElementById('upload-marketing-image');
       const marketingImageUrl = document.getElementById('marketing-image-url');
       const marketingCaption = document.getElementById('marketing-caption');
       const refreshMarketingAudienceButton = document.getElementById('refresh-marketing-audience');
@@ -2419,10 +2417,10 @@ function renderAdminMenuPage() {
         }
       });
 
-      uploadMarketingImageButton.addEventListener('click', async () => {
+      marketingImageFile.addEventListener('change', async () => {
         try {
           const file = marketingImageFile.files[0];
-          if (!file) throw new Error('Choose a campaign image first');
+          if (!file) return;
           marketingImageUrl.value = await uploadImageFile(file);
           setMarketingStatus('Campaign image uploaded and linked.', 'ok');
           await loadOrdersAndPayments();
