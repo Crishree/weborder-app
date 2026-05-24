@@ -42,7 +42,7 @@ const defaultBrands = [
   {
     id: 'neubar',
     name: 'Neubar',
-    customerAppBaseUrl: process.env.FRONTEND_BASE_URL || 'http://localhost:5173',
+    customerAppBaseUrl: process.env.FRONTEND_BASE_URL || '',
     heroEyebrow: 'Neubar Corporate Counter',
     heroTitle: 'A Bowl Full of Life',
     heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
@@ -216,7 +216,7 @@ function normalizeBrands(rawBrands) {
     const normalizedBrand = {
       id: String(brand.id || '').trim(),
       name: String(brand.name || '').trim(),
-      customerAppBaseUrl: String(brand.customerAppBaseUrl || process.env.FRONTEND_BASE_URL || 'http://localhost:5173').trim().replace(/\/+$/, ''),
+      customerAppBaseUrl: String(brand.customerAppBaseUrl || '').trim().replace(/\/+$/, ''),
       heroEyebrow: String(brand.heroEyebrow || brand.name || '').trim(),
       heroTitle: String(brand.heroTitle || 'Order ahead, pick up faster').trim(),
       heroSubtitle: String(brand.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.').trim(),
@@ -234,7 +234,6 @@ function normalizeBrands(rawBrands) {
     if (!normalizedBrand.id) throw new Error(`Brand at index ${index} is missing id`);
     if (seenIds.has(normalizedBrand.id)) throw new Error(`Duplicate brand id: ${normalizedBrand.id}`);
     if (!normalizedBrand.name) throw new Error(`Brand ${normalizedBrand.id} is missing name`);
-    if (!normalizedBrand.customerAppBaseUrl) throw new Error(`Brand ${normalizedBrand.id} is missing customer app base URL`);
 
     seenIds.add(normalizedBrand.id);
     return normalizedBrand;
@@ -1388,23 +1387,102 @@ function renderAdminMenuPage() {
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Neubar Menu Admin</title>
     <style>
-      :root { color-scheme: light; --text-base: 16px; --text-small: 16px; --text-title: 32px; --text-section: 24px; }
-      body { margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f7f4ee; color: #1e1d1a; font-size: var(--text-base); }
-      .shell { max-width: 1040px; margin: 0 auto; padding: 32px 20px 56px; }
-      .hero { background: linear-gradient(135deg, #fff0aa, #ffd469); border-radius: 28px; padding: 28px; box-shadow: 0 18px 40px rgba(0,0,0,0.08); }
-      h1 { margin: 0 0 8px; font-size: var(--text-title); }
-      h2 { margin: 0 0 8px; font-size: var(--text-section); }
-      p { line-height: 1.45; font-size: var(--text-base); }
-      .grid { display: grid; gap: 20px; margin-top: 24px; }
-      .panel { background: #fff; border-radius: 24px; padding: 20px; box-shadow: 0 12px 30px rgba(0,0,0,0.06); }
-      label { display: block; font-weight: 700; margin-bottom: 8px; font-size: var(--text-small); }
+      :root {
+        color-scheme: light;
+        --bg: #f4efe6;
+        --surface: rgba(255, 252, 246, 0.92);
+        --surface-strong: #ffffff;
+        --surface-muted: #f2eadc;
+        --line: #ddd1bf;
+        --text: #171411;
+        --muted: #6f675d;
+        --primary: #0a6f5c;
+        --primary-deep: #084d41;
+        --accent: #ffd86f;
+        --danger-bg: #fff0ef;
+        --danger-text: #b1261d;
+        --ok-bg: #e7fbf3;
+        --ok-text: #0b7a63;
+        --shadow: 0 20px 50px rgba(28, 21, 12, 0.08);
+        --text-base: 16px;
+        --text-small: 15px;
+        --text-title: 42px;
+        --text-section: 26px;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(255, 227, 154, 0.24), transparent 28%),
+          radial-gradient(circle at top right, rgba(10, 111, 92, 0.1), transparent 22%),
+          linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
+        color: var(--text);
+        font-size: var(--text-base);
+      }
+      .shell { max-width: 1180px; margin: 0 auto; padding: 34px 22px 64px; }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(135deg, #fff1b2 0%, #ffe18d 42%, #ffd469 100%);
+        border-radius: 34px;
+        padding: 34px;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(140, 109, 32, 0.12);
+      }
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: auto -10% -45% auto;
+        width: 320px;
+        height: 320px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.22);
+        filter: blur(4px);
+      }
+      .hero p:first-child {
+        margin: 0 0 10px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        font-size: 13px;
+        font-weight: 800;
+        color: var(--primary);
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: var(--text-title);
+        line-height: 0.95;
+        letter-spacing: -0.03em;
+        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      }
+      h2 { margin: 0; font-size: var(--text-section); letter-spacing: -0.02em; }
+      p { line-height: 1.55; font-size: var(--text-base); color: var(--muted); }
+      .grid { display: grid; gap: 22px; margin-top: 26px; }
+      .panel {
+        background: linear-gradient(180deg, var(--surface-strong), var(--surface));
+        border-radius: 28px;
+        padding: 24px;
+        box-shadow: var(--shadow);
+        border: 1px solid rgba(116, 93, 61, 0.12);
+        backdrop-filter: blur(10px);
+      }
+      .panel > h2 + .hint { margin-top: 10px; }
+      label { display: block; font-weight: 800; margin-bottom: 8px; font-size: var(--text-small); letter-spacing: -0.01em; }
       input[type="text"], input[type="number"], textarea, .field-textarea {
         width: 100%;
-        border-radius: 14px;
-        border: 1px solid #d8d2c7;
-        padding: 12px 14px;
+        border-radius: 16px;
+        border: 1px solid var(--line);
+        padding: 13px 15px;
         font: inherit;
         box-sizing: border-box;
+        background: rgba(255,255,255,0.92);
+        color: var(--text);
+        transition: border-color 150ms ease, box-shadow 150ms ease, background 150ms ease;
+      }
+      input[type="text"]:focus, input[type="number"]:focus, textarea:focus, select:focus {
+        outline: none;
+        border-color: rgba(10, 111, 92, 0.45);
+        box-shadow: 0 0 0 4px rgba(10, 111, 92, 0.12);
+        background: #fff;
       }
       textarea { min-height: 260px; resize: vertical; font-size: var(--text-small); line-height: 1.5; }
       .field-textarea { min-height: 92px; resize: vertical; }
@@ -1420,25 +1498,30 @@ function renderAdminMenuPage() {
         align-items: center;
         justify-content: center;
         font-size: var(--text-small);
+        transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
       }
-      button.primary { background: #0b7a63; color: #fff; }
-      button.secondary, .file-label, .link-btn { background: #f1ebe0; color: #1e1d1a; }
-      button.danger { background: #fff0ef; color: #b1261d; }
+      button:hover, .file-label:hover, .link-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(23, 20, 17, 0.08); }
+      button.primary { background: linear-gradient(180deg, #10836a 0%, var(--primary) 100%); color: #fff; }
+      button.secondary, .file-label, .link-btn { background: linear-gradient(180deg, #f6efe3 0%, #ece2d1 100%); color: var(--text); }
+      button.danger { background: var(--danger-bg); color: var(--danger-text); }
       input[type="file"] { display: none; }
-      .status { margin-top: 14px; padding: 12px 14px; border-radius: 16px; display: none; }
+      .status { margin-top: 16px; padding: 14px 16px; border-radius: 18px; display: none; border: 1px solid transparent; font-weight: 700; }
       .status.show { display: block; }
-      .status.ok { background: #e8fff7; color: #0b7a63; }
-      .status.error { background: #fff0ef; color: #b1261d; }
-      .hint { color: #5f5a50; font-size: var(--text-small); }
+      .status.ok { background: var(--ok-bg); color: var(--ok-text); border-color: rgba(11, 122, 99, 0.12); }
+      .status.error { background: var(--danger-bg); color: var(--danger-text); border-color: rgba(177, 38, 29, 0.12); }
+      .hint { color: var(--muted); font-size: var(--text-small); }
+      .micro-copy { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+      .note-card { margin-top: 18px; padding: 16px 18px; border-radius: 20px; background: linear-gradient(180deg, #fffaf1, #f7efdf); border: 1px solid rgba(142, 115, 68, 0.16); }
+      .note-card strong { display: block; margin-bottom: 6px; font-size: 15px; }
       .preview { margin-top: 18px; display: grid; gap: 12px; }
-      .preview-card { border: 1px solid #ece5d9; border-radius: 18px; padding: 14px; background: #fffcf6; }
+      .preview-card { border: 1px solid #ece5d9; border-radius: 20px; padding: 16px; background: #fffcf6; }
       .preview-card strong { display: block; margin-bottom: 4px; }
       .data-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: var(--text-small); }
-      .data-table th, .data-table td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #ece5d9; vertical-align: top; }
-      .data-table th { color: #5f5a50; font-weight: 800; }
-      .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 10px; background: #f1ebe0; font-size: var(--text-small); font-weight: 800; }
-      .menu-items { display: grid; gap: 16px; margin-top: 18px; }
-      .menu-item { border: 1px solid #ece5d9; border-radius: 20px; padding: 16px; background: #fffcf6; display: grid; gap: 14px; }
+      .data-table th, .data-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #ece5d9; vertical-align: top; }
+      .data-table th { color: var(--muted); font-weight: 800; }
+      .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 11px; background: var(--surface-muted); font-size: 14px; font-weight: 800; }
+      .menu-items { display: grid; gap: 18px; margin-top: 18px; }
+      .menu-item { border: 1px solid #ece5d9; border-radius: 22px; padding: 18px; background: #fffcf6; display: grid; gap: 14px; }
       .item-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .item-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
       .item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -1448,12 +1531,17 @@ function renderAdminMenuPage() {
       .image-preview { width: 100%; max-width: 180px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 1px solid #ece5d9; background: #f3eee4; }
       .image-preview.empty { display: grid; place-items: center; color: #7b7569; font-size: var(--text-small); padding: 14px; }
       .image-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-      details { border: 1px solid #ece5d9; border-radius: 18px; padding: 14px 16px; background: #fffcf6; margin-top: 18px; }
+      details { border: 1px solid #ece5d9; border-radius: 20px; padding: 16px 18px; background: #fffcf6; margin-top: 18px; }
       summary { cursor: pointer; font-weight: 800; font-size: var(--text-small); }
-      select { width: 100%; border-radius: 14px; border: 1px solid #d8d2c7; padding: 12px 14px; font: inherit; box-sizing: border-box; background: #fff; }
+      select { width: 100%; border-radius: 16px; border: 1px solid var(--line); padding: 13px 15px; font: inherit; box-sizing: border-box; background: rgba(255,255,255,0.92); }
       .outlet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
-      @media (max-width: 720px) { .item-grid { grid-template-columns: 1fr; } }
-      @media (max-width: 720px) { .outlet-grid { grid-template-columns: 1fr; } }
+      .field-group-title { margin: 8px 0 0; font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+      @media (max-width: 720px) {
+        .item-grid, .outlet-grid { grid-template-columns: 1fr; }
+        .shell { padding-inline: 16px; }
+        .hero { padding: 24px; }
+        h1 { font-size: 34px; }
+      }
     </style>
   </head>
   <body>
@@ -1467,7 +1555,11 @@ function renderAdminMenuPage() {
       <div class="grid">
         <section class="panel">
           <h2>Brands</h2>
-          <p class="hint">Manage shared customer app domains here. Multiple outlets can point to one brand so they share the same customer-facing app domain.</p>
+          <p class="hint">Manage shared brand identity here. Multiple outlets can point to one brand so they share the same domain, voice, theme, and logo.</p>
+          <div class="note-card">
+            <strong>About Customer App Base URL</strong>
+            <span class="hint">This is only needed when a brand should open on its own customer-facing domain, such as <code>https://neubar.pikquik.com</code>. If left blank, links fall back to the outlet override first and then the server-level default domain.</span>
+          </div>
           <label for="brand-select">Current Brand</label>
           <select id="brand-select"></select>
           <div class="actions">
@@ -1937,8 +2029,9 @@ function renderAdminMenuPage() {
         brandForm.innerHTML =
           '<div><label>Brand ID</label><input type="text" data-brand-field="id" value="' + escapeHtml(brand.id) + '" /></div>' +
           '<div><label>Brand Name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" /></div>' +
-          '<div><label>Customer App Base URL</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" /></div>' +
+          '<div><label>Customer App Base URL (optional)</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" placeholder="https://brand.pikquik.com" /><div class="micro-copy">Used for WhatsApp, campaign, and payment-success links when this brand owns its own domain.</div></div>' +
           '<div><label>Hero Eyebrow</label><input type="text" data-brand-field="heroEyebrow" value="' + escapeHtml(brand.heroEyebrow || '') + '" /></div>' +
+          '<div class="full field-group-title">Customer-facing identity</div>' +
           '<div><label>Hero Title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
           '<div class="full"><label>Hero Subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
           '<div><label>Logo Text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
@@ -1948,6 +2041,7 @@ function renderAdminMenuPage() {
           '<input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" placeholder="Logo will be uploaded and linked automatically" readonly />' +
           (brand.logoUrl ? '<div style="margin-top:8px;"><img class="image-preview" src="' + escapeHtml(brand.logoUrl) + '" alt="' + escapeHtml(brand.name || 'Brand logo') + '" style="max-width:' + escapeHtml(String(brand.logoWidth || 160)) + 'px; max-height:' + escapeHtml(String(brand.logoHeight || 36)) + 'px; width:auto; height:auto;" /></div>' : '') +
           '</div>' +
+          '<div class="full field-group-title">Visual system</div>' +
           '<div><label>Primary Color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +
           '<div><label>Accent Color</label><input type="text" data-brand-field="accentColor" value="' + escapeHtml(brand.accentColor || '#ffd84d') + '" /></div>' +
           '<div><label>Accent Text Color</label><input type="text" data-brand-field="accentTextColor" value="' + escapeHtml(brand.accentTextColor || '#202020') + '" /></div>' +

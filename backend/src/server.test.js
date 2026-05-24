@@ -31,6 +31,9 @@ import {
 } from './server.js';
 
 test.beforeEach(() => {
+  process.env.WHATSAPP_ACCESS_TOKEN = '';
+  process.env.WHATSAPP_PHONE_NUMBER_ID = '';
+  process.env.WHATSAPP_GRAPH_VERSION = '';
   configureRuntimeStoreFiles({
     sessionsPath: path.join(os.tmpdir(), 'neubar-backend-test-sessions.json'),
     ordersPath: path.join(os.tmpdir(), 'neubar-backend-test-orders.json')
