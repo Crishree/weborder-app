@@ -40,13 +40,13 @@ const orders = new Map();
 
 const defaultBrands = [
   {
-    id: 'neubar',
-    name: 'Neubar',
+    id: 'showcase',
+    name: 'PikQuik Showcase',
     customerAppBaseUrl: process.env.FRONTEND_BASE_URL || '',
-    heroEyebrow: 'Neubar Corporate Counter',
-    heroTitle: 'A Bowl Full of Life',
-    heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
-    logoText: 'Neubar',
+    heroEyebrow: 'Multi-brand pickup commerce',
+    heroTitle: 'Order ahead. Pay online. Pick up fast.',
+    heroSubtitle: 'Launch branded ordering, payments, and WhatsApp re-engagement from one operating layer.',
+    logoText: 'PikQuik',
     logoUrl: '',
     logoWidth: 160,
     logoHeight: 36,
@@ -60,36 +60,20 @@ const defaultBrands = [
 
 const defaultOutlets = [
   {
-    id: 'bagmane_virgo',
-    brandId: 'neubar',
-    name: 'Bagmane Virgo',
+    id: 'showcase_hq',
+    brandId: 'showcase',
+    name: 'Showcase HQ',
     status: 'ACTIVE',
-    pickupLabel: 'Neubar Corporate Counter',
-    address: 'Bagmane Virgo, Bangalore',
+    pickupLabel: 'Pickup counter',
+    address: 'Bangalore, India',
     latitude: 12.9783,
     longitude: 77.6634,
-    locationKeywords: ['bagmane', 'virgo', 'cv raman nagar', 'mahadevapura'],
+    locationKeywords: ['showcase', 'demo', 'hq', 'bangalore'],
     timezone: 'Asia/Kolkata',
     paymentProvider: 'Razorpay',
     paymentMode: 'payment_link',
-    petpoojaOutletId: 'PP_OUTLET_BAGMANE_VIRGO',
+    petpoojaOutletId: 'PP_OUTLET_SHOWCASE_HQ',
     supportPhone: '+91-9000000001'
-  },
-  {
-    id: 'manyata_tower',
-    brandId: 'neubar',
-    name: 'Manyata Tower',
-    status: 'INACTIVE',
-    pickupLabel: 'Neubar Tower Counter',
-    address: 'Manyata Tech Park, Bangalore',
-    latitude: 13.0475,
-    longitude: 77.6202,
-    locationKeywords: ['manyata', 'hebbal', 'nagawara', 'tower'],
-    timezone: 'Asia/Kolkata',
-    paymentProvider: 'Razorpay',
-    paymentMode: 'payment_link',
-    petpoojaOutletId: 'PP_OUTLET_MANYATA_TOWER',
-    supportPhone: '+91-9000000002'
   }
 ];
 
@@ -726,7 +710,7 @@ export function recordUploadedImage({
 }
 
 function getDefaultOutletId() {
-  return outlets.find((outlet) => outlet.status === 'ACTIVE')?.id || outlets[0]?.id || 'bagmane_virgo';
+  return outlets.find((outlet) => outlet.status === 'ACTIVE')?.id || outlets[0]?.id || defaultOutlets[0]?.id || 'default_outlet';
 }
 
 function getOutletMenu(outletId) {
@@ -1102,7 +1086,14 @@ function getWhatsAppMessageText(message) {
 
 function buildWhatsAppMenuMessage(outlet, session) {
   const orderLink = buildOrderLink({ sessionId: session.id, outletId: outlet.id });
-  return `Welcome to Neubar.\n\nClosest outlet: ${outlet.name}\nPickup: ${outlet.pickupLabel}\nAddress: ${outlet.address}\n\nOpen the menu and place your prepaid WhatsApp order here:\n${orderLink}`;
+  const branding = getBrandingForOutlet(outlet.id);
+  return `Welcome to ${branding.brandName}.\n\nClosest outlet: ${outlet.name}\nPickup: ${outlet.pickupLabel}\nAddress: ${outlet.address}\n\nOpen the menu and place your prepaid WhatsApp order here:\n${orderLink}`;
+}
+
+function buildPickupConfirmationMessage(order) {
+  const branding = getBrandingForOutlet(order.outletId);
+  const pickupPoint = order.pickupLabel || branding.pickupLabel || `${branding.brandName} counter`;
+  return `Payment received ✅\n\nOrder: ${order.id}\nPickup code: ${order.pickupCode}\nTotal: ₹${order.total}\nShow this code at the ${pickupPoint}.`;
 }
 
 export async function handleIncomingWhatsAppMessage(message) {
@@ -1385,7 +1376,7 @@ function renderAdminMenuPage() {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Neubar Menu Admin</title>
+    <title>Weborder Admin</title>
     <style>
       :root {
         color-scheme: light;
@@ -1509,7 +1500,10 @@ function renderAdminMenuPage() {
         align-items: center;
         justify-content: center;
         font-size: var(--text-small);
+        line-height: 1;
         letter-spacing: 0.01em;
+        white-space: nowrap;
+        box-sizing: border-box;
         transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
       }
       button:hover, .file-label:hover, .link-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(23, 20, 17, 0.08); }
@@ -1536,10 +1530,12 @@ function renderAdminMenuPage() {
       .menu-item { border: 1px solid #ece5d9; border-radius: 22px; padding: 18px; background: #fffcf6; display: grid; gap: 14px; }
       .item-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .item-head strong { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-family: var(--font-ui); }
-      .item-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      .item-head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
       .item-head-actions button {
         min-height: 42px;
-        min-width: 132px;
+        width: 144px;
+        min-width: 144px;
+        flex: 0 0 144px;
         padding-inline: 18px;
       }
       .item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -1548,11 +1544,13 @@ function renderAdminMenuPage() {
       .checkbox-row input { width: 18px; height: 18px; }
       .image-preview { width: 100%; max-width: 180px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 1px solid #ece5d9; background: #f3eee4; }
       .image-preview.empty { display: grid; place-items: center; color: #7b7569; font-size: var(--text-small); padding: 14px; }
-      .image-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+      .image-tools { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 10px; }
       .image-tools .file-label,
       .image-tools button {
         min-height: 40px;
-        min-width: 184px;
+        width: 188px;
+        min-width: 188px;
+        flex: 0 0 188px;
         padding-inline: 18px;
       }
       details { border: 1px solid #ece5d9; border-radius: 20px; padding: 16px 18px; background: #fffcf6; margin-top: 18px; }
@@ -1572,9 +1570,9 @@ function renderAdminMenuPage() {
   <body>
     <div class="shell">
       <section class="hero">
-        <p>Backend Admin</p>
-        <h1>Upload Menu</h1>
-        <p>Upload a JSON, CSV, or Excel file, upload menu images locally, or manage the menu directly as editable rows. Saving here updates the live backend menu and persists it to disk.</p>
+        <p>Weborder Console</p>
+        <h1>Brand, outlet, and menu operations</h1>
+        <p>Manage branded ordering surfaces, outlet configuration, menus, payments, and WhatsApp journeys from one polished operational console.</p>
       </section>
 
       <div class="grid">
@@ -1582,8 +1580,8 @@ function renderAdminMenuPage() {
           <h2>Brands</h2>
           <p class="hint">Manage shared brand identity here. Multiple outlets can point to one brand so they share the same domain, voice, theme, and logo.</p>
           <div class="note-card">
-            <strong>About Customer App Base URL</strong>
-            <span class="hint">This is only needed when a brand should open on its own customer-facing domain, such as <code>https://neubar.pikquik.com</code>. If left blank, links fall back to the outlet override first and then the server-level default domain.</span>
+            <strong>About customer app base URL</strong>
+            <span class="hint">Use this only when a brand should open on its own customer-facing domain, such as <code>https://brand.example.com</code>. If left blank, links fall back to the outlet override first and then the server-level default domain.</span>
           </div>
           <label for="brand-select">Current Brand</label>
           <select id="brand-select"></select>
@@ -1678,7 +1676,7 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>WhatsApp Test Mode</h2>
-          <p class="hint">Use Meta Cloud API test mode before switching to the live Neubar number.</p>
+          <p class="hint">Use Meta Cloud API test mode before switching to a live brand-owned WhatsApp number.</p>
           <div class="preview-card">
             <strong>Test Checklist</strong>
             <div>1. Expose this backend on a public HTTPS URL using ngrok or a deployed endpoint.</div>
@@ -2125,7 +2123,7 @@ function renderAdminMenuPage() {
 
       function getSelectedOutletId() {
         const selectedIndex = Number(outletSelect.value || 0);
-        return outletState[selectedIndex]?.id || outletState[0]?.id || 'bagmane_virgo';
+        return outletState[selectedIndex]?.id || outletState[0]?.id || 'showcase_hq';
       }
 
       async function loadBrands() {
@@ -2765,7 +2763,7 @@ function getSessionOrDefault({ sessionId, customerMobile, outletId }) {
   return sessions.get(sessionId) || {
     id: sessionId || 'demo-session',
     customerMobile: customerMobile || 'demo-customer',
-    outletId: fallbackOutlet?.id || 'bagmane_virgo',
+    outletId: fallbackOutlet?.id || defaultOutlets[0]?.id || 'default_outlet',
     channel: 'WEB',
     flowState: ORDER_FLOW.SESSION_CREATED
   };
@@ -2857,10 +2855,7 @@ async function finalizePaidOrder(order, paymentUpdate = {}) {
   };
 
   await pushOrderToPetpooja(order);
-  await sendWhatsAppMessage(
-    order.customerMobile,
-    `Payment received ✅\n\nOrder: ${order.id}\nPickup Code: ${order.pickupCode}\nTotal: ₹${order.total}\nShow this code at the Neubar counter.`
-  );
+  await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order));
   order.flowState = ORDER_FLOW.PICKUP_CODE_SENT;
 
   persistOrders();
@@ -3041,6 +3036,7 @@ export function resetStore() {
   orders.clear();
   persistSessions();
   persistOrders();
+  brands = normalizeBrands(defaultBrands);
   outlets = normalizeOutlets(defaultOutlets);
   menusByOutlet = normalizeMenusByOutlet(buildDefaultMenusByOutlet());
   uploadedImagesByOutlet = normalizeOutletScopedStore({}, normalizeUploadedImage);
@@ -3095,7 +3091,7 @@ export function configureWhatsAppTransport({ fetchImpl } = {}) {
 }
 
 app.get('/health', (req, res) => {
-  res.json({ ok: true, service: 'Neubar Ordering MVP Backend' });
+  res.json({ ok: true, service: 'Weborder Platform Backend' });
 });
 
 app.post('/api/session', async (req, res) => {
@@ -3396,10 +3392,7 @@ app.post('/api/admin/orders/:orderId/resend-confirmation', async (req, res) => {
     if (!order) return res.status(404).json({ error: 'Order not found' });
     if (order.paymentStatus !== 'PAID') return res.status(400).json({ error: 'Order is not paid yet' });
 
-    await sendWhatsAppMessage(
-      order.customerMobile,
-      `Payment received ✅\n\nOrder: ${order.id}\nPickup Code: ${order.pickupCode}\nTotal: ₹${order.total}\nShow this code at the Neubar counter.`
-    );
+    await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order));
     logAuditEvent({
       outletId: order.outletId,
       action: 'ORDER_CONFIRMATION_RESENT',
@@ -3559,6 +3552,6 @@ app.get('/whatsapp/webhook', (req, res) => {
 
 if (import.meta.url === pathToFileURL(process.argv[1] || '').href) {
   app.listen(PORT, () => {
-    console.log(`Neubar backend running on http://localhost:${PORT}`);
+    console.log(`Weborder backend running on http://localhost:${PORT}`);
   });
 }

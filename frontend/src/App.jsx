@@ -12,11 +12,11 @@ import './styles.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000';
 const DEFAULT_BRANDING = {
-  brandName: 'Neubar',
-  logoText: 'Neubar',
-  heroEyebrow: 'Neubar Corporate Counter',
-  heroTitle: 'A Bowl Full of Life',
-  heroSubtitle: 'Order ahead. Pay online. Pick up with your code.',
+  brandName: 'PikQuik Showcase',
+  logoText: 'PikQuik',
+  heroEyebrow: 'Order ahead commerce',
+  heroTitle: 'Fast pickup for modern food brands',
+  heroSubtitle: 'Launch branded ordering, payments, and WhatsApp re-engagement from one operating layer.',
   logoUrl: '',
   logoWidth: 160,
   logoHeight: 36,

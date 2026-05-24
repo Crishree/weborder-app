@@ -118,9 +118,10 @@ test('orders and payments survive an in-memory reset when reloaded from disk', a
 });
 
 test('uploaded images and audit logs persist per outlet', () => {
+  const [primaryOutlet, secondaryOutlet] = getOutlets();
   const image = recordUploadedImage({
-    outletId: 'bagmane_virgo',
-    imageUrl: 'http://localhost:4000/uploads/bagmane_virgo/filter-coffee.jpg',
+    outletId: primaryOutlet.id,
+    imageUrl: `http://localhost:4000/uploads/${primaryOutlet.id}/filter-coffee.jpg`,
     filename: 'filter-coffee.jpg',
     originalName: 'filter-coffee.jpg',
     mimeType: 'image/jpeg',
@@ -128,13 +129,15 @@ test('uploaded images and audit logs persist per outlet', () => {
     uploadedBy: 'admin-ui'
   });
 
-  assert.equal(getUploadedImagesByOutlet('bagmane_virgo').length, 1);
-  assert.equal(getUploadedImagesByOutlet('manyata_tower').length, 0);
+  assert.equal(getUploadedImagesByOutlet(primaryOutlet.id).length, 1);
+  if (secondaryOutlet) {
+    assert.equal(getUploadedImagesByOutlet(secondaryOutlet.id).length, 0);
+  }
 
   reloadAdminStore();
 
-  const persistedImages = getUploadedImagesByOutlet('bagmane_virgo');
-  const persistedAudit = listAuditLogsByOutlet('bagmane_virgo');
+  const persistedImages = getUploadedImagesByOutlet(primaryOutlet.id);
+  const persistedAudit = listAuditLogsByOutlet(primaryOutlet.id);
 
   assert.equal(persistedImages.length, 1);
   assert.equal(persistedImages[0].id, image.id);
@@ -145,6 +148,7 @@ test('uploaded images and audit logs persist per outlet', () => {
 });
 
 test('whatsapp hi flow creates a whatsapp session and shares an outlet menu link', async () => {
+  const expectedOutletId = getOutlets()[0].id;
   const session = await handleIncomingWhatsAppMessage({
     from: '919900000001',
     text: { body: 'Hi from Bagmane' }
@@ -152,9 +156,9 @@ test('whatsapp hi flow creates a whatsapp session and shares an outlet menu link
 
   assert.ok(session);
   assert.equal(session.customerMobile, '919900000001');
-  assert.equal(session.outletId, 'bagmane_virgo');
+  assert.equal(session.outletId, expectedOutletId);
 
-  const auditEntries = listAuditLogsByOutlet('bagmane_virgo');
+  const auditEntries = listAuditLogsByOutlet(expectedOutletId);
   assert.equal(auditEntries[0].action, 'WHATSAPP_MENU_SHARED');
   assert.equal(auditEntries[0].metadata.customerMobile, '919900000001');
 
@@ -214,14 +218,15 @@ test('whatsapp provider uses Meta Cloud API when credentials are configured', as
 });
 
 test('petpooja menu pull hook refreshes the selected outlet menu', async () => {
-  const pulledMenu = await pullMenuFromPetpooja('bagmane_virgo', { persist: false });
+  const outletId = getOutlets()[0].id;
+  const pulledMenu = await pullMenuFromPetpooja(outletId, { persist: false });
 
-  assert.equal(pulledMenu.outletId, 'bagmane_virgo');
+  assert.equal(pulledMenu.outletId, outletId);
   assert.ok(Array.isArray(pulledMenu.menu));
   assert.ok(pulledMenu.menu.length > 0);
-  assert.equal(getMenu({ includeUnavailable: true, outletId: 'bagmane_virgo' }).length, pulledMenu.menu.length);
+  assert.equal(getMenu({ includeUnavailable: true, outletId }).length, pulledMenu.menu.length);
 
-  const auditEntries = listAuditLogsByOutlet('bagmane_virgo');
+  const auditEntries = listAuditLogsByOutlet(outletId);
   assert.equal(auditEntries[0].action, 'MENU_PULLED_FROM_PETPOOJA');
 });
 
