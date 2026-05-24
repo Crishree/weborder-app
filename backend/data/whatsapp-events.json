@@ -1,0 +1,1133 @@
+[
+  {
+    "id": "waevt_ovLZm66d",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://neubar.pikquik.com?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSNzAwNzU4RDVDNTg4QjIwMzRGAA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T10:49:07.065Z"
+  },
+  {
+    "id": "waevt_iRNbS2WW",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwNkUxREIyODdBOThCMzc2OThGNzg3ODlEMUJDQ0MA",
+      "timestamp": "1779614567",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T10:49:06.118Z"
+  },
+  {
+    "id": "waevt_3QTw2H9B",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://neubar.pikquik.com?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSMDg2MzY0MUI0NjNGMTk5NkY5AA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T10:39:01.344Z"
+  },
+  {
+    "id": "waevt_TFNSjs24",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNBNUFEMTcwQjM4NEZGRkU1Q0RCMTRENEE4NjUzQTQA",
+      "timestamp": "1779619138",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T10:39:00.053Z"
+  },
+  {
+    "id": "waevt_ojwePIO8",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://unstamped-isolating-moonshine.ngrok-free.dev?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSOEIxN0E5QjQ4MTIzQzE4QTI4AA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T09:42:44.969Z"
+  },
+  {
+    "id": "waevt_EYy1af1D",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T09:42:44.040Z"
+  },
+  {
+    "id": "waevt_vp9BhtR2",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://unstamped-isolating-moonshine.ngrok-free.dev?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSMzM0OTBEM0EwRUI3NzhCNkE3AA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T09:33:01.334Z"
+  },
+  {
+    "id": "waevt_Wl2JEJNn",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNEQzY4MThFQjkyRUM2NjQ0QkExQzI5NjZBNEZFMEUA",
+      "timestamp": "1779615179",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T09:32:59.951Z"
+  },
+  {
+    "id": "waevt_9RUvOju0",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://unstamped-isolating-moonshine.ngrok-free.dev?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSNEMwRDE4QjExNjg4MTQ4Q0M2AA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T09:31:46.172Z"
+  },
+  {
+    "id": "waevt_5tS9T-fj",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhgUM0I0MDE4OUUwNEQyOTc5QkE3NEUA",
+      "timestamp": "1779614695",
+      "text": {
+        "body": "hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T09:31:45.005Z"
+  },
+  {
+    "id": "waevt_bLNr32Kx",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://YOUR_PUBLIC_FRONTEND_URL?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSNzgzMjBENjE5REJGODUzNTRGAA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T08:04:50.604Z"
+  },
+  {
+    "id": "waevt_Gm1HSihV",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhgUM0IyNjhFRjc1QkIyNDAxODQxRDMA",
+      "timestamp": "1779609887",
+      "text": {
+        "body": "hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T08:04:48.918Z"
+  },
+  {
+    "id": "waevt_UUhWJYbZ",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttps://YOUR_FRONTEND_NGROK_URL?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSNDM1NUI3NUQ1QjZCODhBM0NBAA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-24T07:55:43.508Z"
+  },
+  {
+    "id": "waevt_2n_Wng1p",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhgUM0JFODRBRjREQ0E2N0ZCNzE3MDkA",
+      "timestamp": "1779609340",
+      "text": {
+        "body": "hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T07:55:42.118Z"
+  },
+  {
+    "id": "waevt_CNcbgaf0",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNBMjgyQkNCNDdENjVCMTU0NDg3NTJDREFFRUVGODMA",
+      "timestamp": "1779609196",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T07:53:18.047Z"
+  },
+  {
+    "id": "waevt_rwlMVv4c",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMyOTFCMjZFN0MxQzA5M0E1QjM1NTQ1QUFERDAxNkIA",
+      "timestamp": "1779608073",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-24T07:34:36.313Z"
+  },
+  {
+    "id": "waevt__smDxFUP",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwMUZEMzU4QjBCQjk2Qjg1QTRFQUQ5NDQ4MzIyM0MA",
+      "timestamp": "1779513132",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:12:13.802Z"
+  },
+  {
+    "id": "waevt_NyaMdSga",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttp://localhost:5173?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSNkE2RDczQkZDMzdCNjdBQTlFAA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-23T05:10:27.231Z"
+  },
+  {
+    "id": "waevt_5cFNVLBd",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM2MDdCQUZCOTI3NDM5NDMwMDA1N0IxMDMxQzQxQ0QA",
+      "timestamp": "1779512790",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:10:26.315Z"
+  },
+  {
+    "id": "waevt_dlNK3Dj6",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "provider": "meta-cloud-api",
+      "payload": {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": "919448352030",
+        "type": "text",
+        "text": {
+          "preview_url": false,
+          "body": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttp://localhost:5173?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+        }
+      },
+      "response": {
+        "messaging_product": "whatsapp",
+        "contacts": [
+          {
+            "input": "919448352030",
+            "wa_id": "919448352030"
+          }
+        ],
+        "messages": [
+          {
+            "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAERgSNjRDRERDMzZFRTNCRkQ0OTVBAA=="
+          }
+        ]
+      }
+    },
+    "createdAt": "2026-05-23T05:10:05.584Z"
+  },
+  {
+    "id": "waevt_SDX8_kv1",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwRjE1NTczMTA0MzM3RjM2Njc1ODkxM0Q4OEQwQkMA",
+      "timestamp": "1779512722",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:10:04.415Z"
+  },
+  {
+    "id": "waevt_9BDX1vr3",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNCN0Q5NzMyMEFCMjZGQjI0MUZCMUZFNkYxRURBNzcA",
+      "timestamp": "1779512827",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:07:08.867Z"
+  },
+  {
+    "id": "waevt_LDJ3aP3W",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:58.467Z"
+  },
+  {
+    "id": "waevt_cyZgF5-6",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM2MDdCQUZCOTI3NDM5NDMwMDA1N0IxMDMxQzQxQ0QA",
+      "timestamp": "1779512790",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:49.460Z"
+  },
+  {
+    "id": "waevt_dWwX7HWV",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM2MDdCQUZCOTI3NDM5NDMwMDA1N0IxMDMxQzQxQ0QA",
+      "timestamp": "1779512790",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:34.705Z"
+  },
+  {
+    "id": "waevt_L1Zt0vRd",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM2MDdCQUZCOTI3NDM5NDMwMDA1N0IxMDMxQzQxQ0QA",
+      "timestamp": "1779512790",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:33.131Z"
+  },
+  {
+    "id": "waevt_FNfMvnel",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM2MDdCQUZCOTI3NDM5NDMwMDA1N0IxMDMxQzQxQ0QA",
+      "timestamp": "1779512790",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:32.177Z"
+  },
+  {
+    "id": "waevt_qXRrg-ix",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM2MDdCQUZCOTI3NDM5NDMwMDA1N0IxMDMxQzQxQ0QA",
+      "timestamp": "1779512790",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:31.414Z"
+  },
+  {
+    "id": "waevt_ZcUbWArq",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5MEQwMkU3MUNGQjg5Mzg0MTNBMDRCODY2QTM2MzYA",
+      "timestamp": "1779512394",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:06:23.735Z"
+  },
+  {
+    "id": "waevt_l4DNYs1A",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwRjE1NTczMTA0MzM3RjM2Njc1ODkxM0Q4OEQwQkMA",
+      "timestamp": "1779512722",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:05:36.296Z"
+  },
+  {
+    "id": "waevt_ioIoosCT",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwRjE1NTczMTA0MzM3RjM2Njc1ODkxM0Q4OEQwQkMA",
+      "timestamp": "1779512722",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:05:27.605Z"
+  },
+  {
+    "id": "waevt_C9ojZzIe",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwRjE1NTczMTA0MzM3RjM2Njc1ODkxM0Q4OEQwQkMA",
+      "timestamp": "1779512722",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:05:25.250Z"
+  },
+  {
+    "id": "waevt_-sSFxUDF",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwRjE1NTczMTA0MzM3RjM2Njc1ODkxM0Q4OEQwQkMA",
+      "timestamp": "1779512722",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:05:24.266Z"
+  },
+  {
+    "id": "waevt_-xxN68P3",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUMwRjE1NTczMTA0MzM3RjM2Njc1ODkxM0Q4OEQwQkMA",
+      "timestamp": "1779512722",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:05:23.328Z"
+  },
+  {
+    "id": "waevt_qinUmDNy",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:04:38.146Z"
+  },
+  {
+    "id": "waevt_fB_0k4r1",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:04:28.166Z"
+  },
+  {
+    "id": "waevt_W1JvdtzZ",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:04:08.845Z"
+  },
+  {
+    "id": "waevt_bn9AyMmm",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:04:06.345Z"
+  },
+  {
+    "id": "waevt_-92v1dxU",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:04:05.384Z"
+  },
+  {
+    "id": "waevt_A0NU-xiJ",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5OEY3NjNCQTcxMjU0QzFGNDI3NzIxNTZEMzQ5QjUA",
+      "timestamp": "1779512642",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:04:04.059Z"
+  },
+  {
+    "id": "waevt_6uzWDxEE",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:03:33.608Z"
+  },
+  {
+    "id": "waevt_PjuF93dr",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5MEQwMkU3MUNGQjg5Mzg0MTNBMDRCODY2QTM2MzYA",
+      "timestamp": "1779512394",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T05:00:09.753Z"
+  },
+  {
+    "id": "waevt_8lYmOYeZ",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5MEQwMkU3MUNGQjg5Mzg0MTNBMDRCODY2QTM2MzYA",
+      "timestamp": "1779512394",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:59.730Z"
+  },
+  {
+    "id": "waevt_JzQHHE-H",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5MEQwMkU3MUNGQjg5Mzg0MTNBMDRCODY2QTM2MzYA",
+      "timestamp": "1779512394",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:58.250Z"
+  },
+  {
+    "id": "waevt_HMrYrpFS",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5MEQwMkU3MUNGQjg5Mzg0MTNBMDRCODY2QTM2MzYA",
+      "timestamp": "1779512394",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:57.374Z"
+  },
+  {
+    "id": "waevt_QJwQV-jn",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5MEQwMkU3MUNGQjg5Mzg0MTNBMDRCODY2QTM2MzYA",
+      "timestamp": "1779512394",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:55.427Z"
+  },
+  {
+    "id": "waevt_HINi28CY",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:23.075Z"
+  },
+  {
+    "id": "waevt_Tfyss9hk",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:09.226Z"
+  },
+  {
+    "id": "waevt_O0ZXx2Lh",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:07.406Z"
+  },
+  {
+    "id": "waevt_YdbkymJz",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:06.568Z"
+  },
+  {
+    "id": "waevt_dhhKXYTB",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUNGMThDNDQyODA0N0ZGNzQ2QjBDQzQ1OTZDMzg3QTgA",
+      "timestamp": "1779512344",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:59:05.266Z"
+  },
+  {
+    "id": "waevt_bZMVQXW1",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "to": "919448352030",
+      "text": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttp://localhost:5173?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+    },
+    "createdAt": "2026-05-23T04:49:46.923Z"
+  },
+  {
+    "id": "waevt_gIbI4JZK",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM3QzRGNzVEQjI4RTRBNjMxQzc3MzdBMTBGN0I1RjEA",
+      "timestamp": "1779511785",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:49:46.907Z"
+  },
+  {
+    "id": "waevt_dZnUe83v",
+    "direction": "outbound",
+    "customerMobile": "919448352030",
+    "eventType": "message",
+    "summary": "Welcome to Neubar.",
+    "payload": {
+      "to": "919448352030",
+      "text": "Welcome to Neubar.\n\nClosest outlet: Bagmane Virgo\nPickup: Neubar Corporate Counter\nAddress: Bagmane Virgo, Bangalore\n\nOpen the menu and place your prepaid WhatsApp order here:\nhttp://localhost:5173?session=nrtNznIvHObSuQqz&outlet=bagmane_virgo&channel=whatsapp"
+    },
+    "createdAt": "2026-05-23T04:48:31.465Z"
+  },
+  {
+    "id": "waevt_yfZ4UITm",
+    "direction": "inbound",
+    "customerMobile": "919448352030",
+    "eventType": "text",
+    "summary": "Hi",
+    "payload": {
+      "from": "919448352030",
+      "from_user_id": "IN.1323168723125282",
+      "id": "wamid.HBgMOTE5NDQ4MzUyMDMwFQIAEhggQUM5QzdEODI2NUMzMjZBNDg4RTJEODE3MkQ4MjQ4QjYA",
+      "timestamp": "1779511710",
+      "text": {
+        "body": "Hi"
+      },
+      "type": "text"
+    },
+    "createdAt": "2026-05-23T04:48:31.450Z"
+  }
+]

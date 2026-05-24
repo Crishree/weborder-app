@@ -1,0 +1,173 @@
+{
+  "bagmane_virgo": [
+    {
+      "id": "audit_8JjAAyANKG",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T10:49:07.066Z"
+    },
+    {
+      "id": "audit_CZDjUnaAak",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T10:39:01.347Z"
+    },
+    {
+      "id": "audit_yE0q1SrdVg",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T09:42:44.970Z"
+    },
+    {
+      "id": "audit__4QaeHZxu-",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T09:33:01.335Z"
+    },
+    {
+      "id": "audit_qfN62v_Vx3",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T09:31:46.173Z"
+    },
+    {
+      "id": "audit_gaDf8H94J_",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T08:04:50.611Z"
+    },
+    {
+      "id": "audit_8xLCzzwqI5",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-24T07:55:43.509Z"
+    },
+    {
+      "id": "audit_ylzlxMy3Xs",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-23T05:10:27.232Z"
+    },
+    {
+      "id": "audit_Qd9eZJtDvv",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-23T05:10:05.585Z"
+    },
+    {
+      "id": "audit_Go1kM9jSDu",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-23T04:49:46.926Z"
+    },
+    {
+      "id": "audit_zScdLvS3Hv",
+      "outletId": "bagmane_virgo",
+      "action": "WHATSAPP_MENU_SHARED",
+      "entityType": "session",
+      "entityId": "nrtNznIvHObSuQqz",
+      "summary": "Shared WhatsApp order link with 919448352030",
+      "actor": "whatsapp-webhook",
+      "metadata": {
+        "customerMobile": "919448352030",
+        "resolutionSource": "default"
+      },
+      "createdAt": "2026-05-23T04:48:31.468Z"
+    },
+    {
+      "id": "audit_KCWpQuJ13w",
+      "outletId": "bagmane_virgo",
+      "action": "CHECKOUT_CREATED",
+      "entityType": "order",
+      "entityId": "NB-LQJOM8KD",
+      "summary": "Created checkout for WEB order NB-LQJOM8KD",
+      "actor": "checkout-api",
+      "metadata": {
+        "channel": "WEB",
+        "total": 130
+      },
+      "createdAt": "2026-05-23T02:25:11.680Z"
+    }
+  ],
+  "manyata_tower": []
+}

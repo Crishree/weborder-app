@@ -1,0 +1,106 @@
+{
+  "bagmane_virgo": [
+    {
+      "id": "rajma_bowl",
+      "petpoojaItemId": "PP_RAJMA_BOWL",
+      "name": "Rajma Bowl",
+      "description": "Rajma, rice, lachha onions and salad.",
+      "price": 130,
+      "category": "Lunch Bowls",
+      "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "mexican_rice_bowl",
+      "petpoojaItemId": "PP_MEXICAN_RICE_BOWL",
+      "name": "Mexican Rice Bowl",
+      "description": "Mexican rice, chilli beans, hung curd and salad.",
+      "price": 130,
+      "category": "Lunch Bowls",
+      "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "veg_fried_rice",
+      "petpoojaItemId": "PP_VEG_FRIED_RICE",
+      "name": "Veg Fried Rice",
+      "description": "Fried rice with black bean sauce and salad.",
+      "price": 130,
+      "category": "Lunch Bowls",
+      "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "bisi_bele_bath",
+      "petpoojaItemId": "PP_BISI_BELE_BATH",
+      "name": "Bisi Bele Bath",
+      "description": "Classic South Indian rice bowl with khara boondi and raitha.",
+      "price": 100,
+      "category": "South Indian Classics",
+      "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "chilli_corn",
+      "petpoojaItemId": "PP_CHILLI_CORN",
+      "name": "Tossed Chilli Corn",
+      "description": "Sweet corn tossed with chilli, herbs and spices.",
+      "price": 80,
+      "category": "Sides",
+      "image": "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    }
+  ],
+  "manyata_tower": [
+    {
+      "id": "rajma_bowl",
+      "petpoojaItemId": "PP_RAJMA_BOWL",
+      "name": "Rajma Bowl",
+      "description": "Rajma, rice, lachha onions and salad.",
+      "price": 130,
+      "category": "Lunch Bowls",
+      "image": "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "mexican_rice_bowl",
+      "petpoojaItemId": "PP_MEXICAN_RICE_BOWL",
+      "name": "Mexican Rice Bowl",
+      "description": "Mexican rice, chilli beans, hung curd and salad.",
+      "price": 130,
+      "category": "Lunch Bowls",
+      "image": "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "veg_fried_rice",
+      "petpoojaItemId": "PP_VEG_FRIED_RICE",
+      "name": "Veg Fried Rice",
+      "description": "Fried rice with black bean sauce and salad.",
+      "price": 130,
+      "category": "Lunch Bowls",
+      "image": "https://images.unsplash.com/photo-1603133872878-684f208fb84b?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "bisi_bele_bath",
+      "petpoojaItemId": "PP_BISI_BELE_BATH",
+      "name": "Bisi Bele Bath",
+      "description": "Classic South Indian rice bowl with khara boondi and raitha.",
+      "price": 100,
+      "category": "South Indian Classics",
+      "image": "https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    },
+    {
+      "id": "chilli_corn",
+      "petpoojaItemId": "PP_CHILLI_CORN",
+      "name": "Tossed Chilli Corn",
+      "description": "Sweet corn tossed with chilli, herbs and spices.",
+      "price": 80,
+      "category": "Sides",
+      "image": "https://images.unsplash.com/photo-1551754655-cd27e38d2076?auto=format&fit=crop&w=800&q=80",
+      "available": true
+    }
+  ]
+}

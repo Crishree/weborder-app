@@ -1,0 +1,86 @@
+[
+  {
+    "id": "NB-W_43WJOV",
+    "sessionId": "demo-session",
+    "outletId": "bagmane_virgo",
+    "customerMobile": "demo-customer",
+    "items": [
+      {
+        "itemId": "rajma_bowl",
+        "petpoojaItemId": "PP_RAJMA_BOWL",
+        "name": "Rajma Bowl",
+        "qty": 1,
+        "unitPrice": 130,
+        "lineTotal": 130
+      }
+    ],
+    "total": 130,
+    "paymentStatus": "PENDING",
+    "orderStatus": "AWAITING_PAYMENT",
+    "pickupCode": null,
+    "codeActive": false,
+    "createdAt": "2026-05-22T18:10:47.410Z",
+    "payment": {
+      "provider": "Razorpay",
+      "mode": "payment_link",
+      "status": "PENDING",
+      "amount": 130,
+      "currency": "INR",
+      "paymentLink": "http://localhost:5173/success?orderId=NB-W_43WJOV",
+      "paymentLinkId": "plink_NB-W_43WJOV",
+      "paymentReference": null,
+      "verifiedByWebhook": false,
+      "lastEvent": "PAYMENT_LINK_CREATED",
+      "lastEventAt": "2026-05-22T18:10:47.410Z",
+      "paidAt": null
+    },
+    "paymentLink": "http://localhost:5173/success?orderId=NB-W_43WJOV"
+  },
+  {
+    "id": "NB-LQJOM8KD",
+    "sessionId": "demo-session",
+    "outletId": "bagmane_virgo",
+    "customerMobile": "demo-customer",
+    "channel": "WEB",
+    "items": [
+      {
+        "itemId": "veg_fried_rice",
+        "petpoojaItemId": "PP_VEG_FRIED_RICE",
+        "name": "Veg Fried Rice",
+        "qty": 1,
+        "unitPrice": 130,
+        "lineTotal": 130
+      }
+    ],
+    "total": 130,
+    "paymentStatus": "PENDING",
+    "orderStatus": "AWAITING_PAYMENT",
+    "flowState": "PAYMENT_LINK_CREATED",
+    "pickupCode": null,
+    "codeActive": false,
+    "createdAt": "2026-05-23T02:25:11.678Z",
+    "petpoojaSync": {
+      "status": "NOT_STARTED",
+      "externalOrderId": null,
+      "lastAttemptAt": null,
+      "syncedAt": null,
+      "error": null
+    },
+    "payment": {
+      "provider": "Razorpay",
+      "mode": "payment_link",
+      "status": "PENDING",
+      "amount": 130,
+      "currency": "INR",
+      "paymentLink": "http://localhost:5173/success?orderId=NB-LQJOM8KD",
+      "paymentLinkId": "plink_NB-LQJOM8KD",
+      "paymentReference": null,
+      "verifiedByWebhook": false,
+      "lastEvent": "PAYMENT_LINK_CREATED",
+      "lastEventAt": "2026-05-23T02:25:11.678Z",
+      "paidAt": null,
+      "channel": "WEB"
+    },
+    "paymentLink": "http://localhost:5173/success?orderId=NB-LQJOM8KD"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "bagmane_virgo",
+    "name": "Bagmane Virgo",
+    "status": "ACTIVE",
+    "pickupLabel": "Neubar Corporate Counter",
+    "address": "Bagmane Virgo, Bangalore",
+    "timezone": "Asia/Kolkata",
+    "paymentProvider": "Razorpay",
+    "paymentMode": "payment_link",
+    "petpoojaOutletId": "PP_OUTLET_BAGMANE_VIRGO",
+    "supportPhone": "+91-9000000001"
+  },
+  {
+    "id": "manyata_tower",
+    "name": "Manyata Tower",
+    "status": "INACTIVE",
+    "pickupLabel": "Neubar Tower Counter",
+    "address": "Manyata Tech Park, Bangalore",
+    "timezone": "Asia/Kolkata",
+    "paymentProvider": "Razorpay",
+    "paymentMode": "payment_link",
+    "petpoojaOutletId": "PP_OUTLET_MANYATA_TOWER",
+    "supportPhone": "+91-9000000002"
+  }
+]
