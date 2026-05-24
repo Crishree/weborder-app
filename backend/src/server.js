@@ -1472,6 +1472,7 @@ function renderAdminMenuPage() {
           <select id="brand-select"></select>
           <div class="actions">
             <button class="secondary" id="add-brand" type="button">Add Brand</button>
+            <button class="secondary" id="remove-brand" type="button">Remove Brand</button>
             <button class="primary" id="save-brands" type="button">Save Brands</button>
           </div>
           <div id="brand-status" class="status"></div>
@@ -1637,6 +1638,7 @@ function renderAdminMenuPage() {
       const menuItemsContainer = document.getElementById('menu-items');
       const categoryOptions = ['Lunch Bowls', 'South Indian Classics', 'Sides', 'Beverages', 'Breakfast', 'Snacks', 'Desserts'];
       const addBrandButton = document.getElementById('add-brand');
+      const removeBrandButton = document.getElementById('remove-brand');
       const saveBrandsButton = document.getElementById('save-brands');
       const addOutletButton = document.getElementById('add-outlet');
       const saveOutletsButton = document.getElementById('save-outlets');
@@ -2246,6 +2248,28 @@ function renderAdminMenuPage() {
         renderBrandSelector();
         brandSelect.value = String(brandState.length - 1);
         renderBrandForm(brandState.length - 1);
+        setBrandStatus('New brand row added. Fill the details or remove it before saving.', 'ok');
+      });
+
+      removeBrandButton.addEventListener('click', () => {
+        const selectedIndex = Number(brandSelect.value || 0);
+        const selectedBrand = brandState[selectedIndex];
+        if (!selectedBrand) return;
+        if (brandState.length <= 1) {
+          setBrandStatus('At least one brand is required.', 'error');
+          return;
+        }
+        if (selectedBrand.id && outletState.some((outlet) => outlet.brandId === selectedBrand.id)) {
+          setBrandStatus('Reassign outlets before removing this brand.', 'error');
+          return;
+        }
+        brandState.splice(selectedIndex, 1);
+        renderBrandSelector();
+        const nextIndex = Math.max(0, Math.min(selectedIndex, brandState.length - 1));
+        brandSelect.value = String(nextIndex);
+        renderBrandForm(nextIndex);
+        renderOutletForm(Number(outletSelect.value || 0));
+        setBrandStatus('Brand removed from the editor. Click Save Brands to persist.', 'ok');
       });
 
       saveBrandsButton.addEventListener('click', async () => {
