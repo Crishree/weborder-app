@@ -1572,14 +1572,20 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>WhatsApp Marketing</h2>
-          <p class="hint">Select previous customers from this outlet, add an image URL and caption, and send a simple daily WhatsApp campaign.</p>
+          <p class="hint">Select previous customers from this outlet, upload a campaign image, add a caption, and send a simple daily WhatsApp campaign.</p>
           <div class="actions">
             <button class="secondary" id="refresh-marketing-audience" type="button">Refresh Audience</button>
             <button class="primary" id="send-marketing-campaign" type="button">Send Campaign</button>
           </div>
           <div id="marketing-status" class="status"></div>
+          <label for="marketing-image-file">Campaign Image</label>
+          <div class="image-tools">
+            <label class="file-label" for="marketing-image-file">Choose Image</label>
+            <input id="marketing-image-file" type="file" accept="image/*" />
+            <button class="secondary" id="upload-marketing-image" type="button">Upload Campaign Image</button>
+          </div>
           <label for="marketing-image-url">Campaign Image URL</label>
-          <input id="marketing-image-url" type="text" placeholder="Use the uploaded image URL from the Image Upload panel" />
+          <input id="marketing-image-url" type="text" placeholder="Upload an image or paste an existing public image URL" />
           <label for="marketing-caption">Caption</label>
           <textarea id="marketing-caption" style="min-height: 88px;"></textarea>
           <div id="marketing-audience"></div>
@@ -1617,6 +1623,8 @@ function renderAdminMenuPage() {
       const marketingStatusBox = document.getElementById('marketing-status');
       const marketingAudience = document.getElementById('marketing-audience');
       const marketingCampaigns = document.getElementById('marketing-campaigns');
+      const marketingImageFile = document.getElementById('marketing-image-file');
+      const uploadMarketingImageButton = document.getElementById('upload-marketing-image');
       const marketingImageUrl = document.getElementById('marketing-image-url');
       const marketingCaption = document.getElementById('marketing-caption');
       const refreshMarketingAudienceButton = document.getElementById('refresh-marketing-audience');
@@ -2406,6 +2414,18 @@ function renderAdminMenuPage() {
         try {
           await loadMarketingData();
           setMarketingStatus('Loaded latest WhatsApp audience and campaign history.', 'ok');
+        } catch (error) {
+          setMarketingStatus(error.message, 'error');
+        }
+      });
+
+      uploadMarketingImageButton.addEventListener('click', async () => {
+        try {
+          const file = marketingImageFile.files[0];
+          if (!file) throw new Error('Choose a campaign image first');
+          marketingImageUrl.value = await uploadImageFile(file);
+          setMarketingStatus('Campaign image uploaded and linked.', 'ok');
+          await loadOrdersAndPayments();
         } catch (error) {
           setMarketingStatus(error.message, 'error');
         }
