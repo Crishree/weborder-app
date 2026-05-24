@@ -1499,7 +1499,9 @@ function renderAdminMenuPage() {
       button, .file-label, .link-btn {
         border: none;
         border-radius: 999px;
-        padding: 12px 18px;
+        min-height: 46px;
+        min-width: 148px;
+        padding: 0 22px;
         font-weight: 600;
         cursor: pointer;
         text-decoration: none;
@@ -1535,13 +1537,24 @@ function renderAdminMenuPage() {
       .item-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .item-head strong { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-family: var(--font-ui); }
       .item-head-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+      .item-head-actions button {
+        min-height: 42px;
+        min-width: 132px;
+        padding-inline: 18px;
+      }
       .item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
       .full { grid-column: 1 / -1; }
       .checkbox-row { display: flex; align-items: center; gap: 10px; }
       .checkbox-row input { width: 18px; height: 18px; }
       .image-preview { width: 100%; max-width: 180px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 1px solid #ece5d9; background: #f3eee4; }
       .image-preview.empty { display: grid; place-items: center; color: #7b7569; font-size: var(--text-small); padding: 14px; }
-      .image-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+      .image-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 10px; }
+      .image-tools .file-label,
+      .image-tools button {
+        min-height: 40px;
+        min-width: 184px;
+        padding-inline: 18px;
+      }
       details { border: 1px solid #ece5d9; border-radius: 20px; padding: 16px 18px; background: #fffcf6; margin-top: 18px; }
       summary { cursor: pointer; font-weight: 600; font-size: var(--text-small); }
       select { width: 100%; border-radius: 16px; border: 1px solid var(--line); padding: 13px 15px; font: inherit; box-sizing: border-box; background: rgba(255,255,255,0.92); }
