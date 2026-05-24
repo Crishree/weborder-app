@@ -57,6 +57,7 @@ test('submitCheckout posts the cart and returns the payment link', async () => {
     apiBase: 'http://localhost:4000',
     sessionId: 'demo-session',
     outletId: 'bagmane_virgo',
+    marketingOptIn: true,
     cartItems: [
       { id: 'rajma_bowl', qty: 2 },
       { id: 'chilli_corn', qty: 1 }
@@ -73,6 +74,7 @@ test('submitCheckout posts the cart and returns the payment link', async () => {
     JSON.stringify({
       sessionId: 'demo-session',
       outletId: 'bagmane_virgo',
+      marketingOptIn: true,
       items: [
         { itemId: 'rajma_bowl', qty: 2 },
         { itemId: 'chilli_corn', qty: 1 }
@@ -94,6 +96,7 @@ test('submitCheckout surfaces checkout errors', async () => {
       apiBase: 'http://localhost:4000',
       sessionId: 'demo-session',
       outletId: 'bagmane_virgo',
+      marketingOptIn: false,
       cartItems: [{ id: 'rajma_bowl', qty: 1 }],
       fetchImpl
     }),

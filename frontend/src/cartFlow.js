@@ -30,6 +30,7 @@ export async function submitCheckout({
   sessionId,
   outletId,
   cartItems,
+  marketingOptIn = false,
   fetchImpl = fetch
 }) {
   const res = await fetchImpl(`${apiBase}/api/checkout`, {
@@ -38,6 +39,7 @@ export async function submitCheckout({
     body: JSON.stringify({
       sessionId,
       outletId,
+      marketingOptIn,
       items: cartItems.map((item) => ({ itemId: item.id, qty: item.qty }))
     })
   });

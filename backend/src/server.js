@@ -820,6 +820,8 @@ export function replaceMenu(nextMenu, { outletId = getDefaultOutletId(), persist
 function listAudienceByOutlet(outletId) {
   const seen = new Map();
   listOrdersByOutlet(outletId).forEach((order) => {
+    if (order.paymentStatus !== 'PAID') return;
+    if (!order.marketingConsent?.whatsappUpdates) return;
     const mobile = normalizeWhatsAppRecipient(order.customerMobile);
     if (!mobile) return;
     if (!seen.has(mobile)) {
@@ -827,7 +829,8 @@ function listAudienceByOutlet(outletId) {
         customerMobile: mobile,
         lastOrderId: order.id,
         lastOrderedAt: order.createdAt,
-        totalOrders: 1
+        totalOrders: 1,
+        optedInAt: order.marketingConsent?.optedInAt || order.createdAt
       });
       return;
     }
@@ -2574,6 +2577,31 @@ function getSessionOrDefault({ sessionId, customerMobile, outletId }) {
   };
 }
 
+function hasPriorOrdersForCustomer(customerMobile) {
+  const normalizedMobile = normalizeWhatsAppRecipient(customerMobile);
+  if (!normalizedMobile || normalizedMobile === 'demo-customer') {
+    return false;
+  }
+
+  return [...orders.values()].some((order) => normalizeWhatsAppRecipient(order.customerMobile) === normalizedMobile);
+}
+
+function getCheckoutConfig(session) {
+  const normalizedMobile = normalizeWhatsAppRecipient(session?.customerMobile);
+  const isRealWhatsAppCustomer = Boolean(
+    normalizedMobile &&
+    normalizedMobile !== 'demo-customer' &&
+    String(session?.channel || '').toUpperCase() === 'WHATSAPP'
+  );
+  const marketingOptInEligible = isRealWhatsAppCustomer && !hasPriorOrdersForCustomer(normalizedMobile);
+
+  return {
+    marketingOptInEligible,
+    marketingOptInDefault: marketingOptInEligible,
+    marketingOptInLabel: 'Receive updates on WhatsApp'
+  };
+}
+
 function buildOrderAdminSummary(order) {
   return {
     id: order.id,
@@ -2589,6 +2617,7 @@ function buildOrderAdminSummary(order) {
     createdAt: order.createdAt,
     paidAt: order.paidAt || null,
     payment: order.payment,
+    marketingConsent: order.marketingConsent || null,
     petpoojaSync: order.petpoojaSync,
     items: order.items
   };
@@ -2660,10 +2689,12 @@ function markOrderPaymentFailed(order, failureReason = 'Payment failed') {
   return order;
 }
 
-export async function createCheckoutOrder({ sessionId, items, customerMobile, outletId, channel = 'WEB' }) {
+export async function createCheckoutOrder({ sessionId, items, customerMobile, outletId, channel = 'WEB', marketingOptIn } = {}) {
   const session = getSessionOrDefault({ sessionId, customerMobile, outletId });
   const { detailedItems, total } = calculateCart(items || [], session.outletId);
   const orderId = `NB-${nanoid(8).toUpperCase()}`;
+  const checkoutConfig = getCheckoutConfig(session);
+  const marketingUpdatesEnabled = checkoutConfig.marketingOptInEligible ? marketingOptIn !== false : false;
 
   const order = {
     id: orderId,
@@ -2679,6 +2710,12 @@ export async function createCheckoutOrder({ sessionId, items, customerMobile, ou
     pickupCode: null,
     codeActive: false,
     createdAt: new Date().toISOString(),
+    marketingConsent: {
+      whatsappUpdates: marketingUpdatesEnabled,
+      eligibleOnCheckout: checkoutConfig.marketingOptInEligible,
+      optedInAt: marketingUpdatesEnabled ? new Date().toISOString() : null,
+      source: 'checkout'
+    },
     petpoojaSync: {
       status: 'NOT_STARTED',
       externalOrderId: null,
@@ -2903,9 +2940,12 @@ app.get('/api/session/:sessionId', (req, res) => {
 
 app.get('/api/menu', (req, res) => {
   const outletId = String(req.query.outletId || getDefaultOutletId());
+  const sessionId = String(req.query.sessionId || '').trim();
+  const session = sessionId ? sessions.get(sessionId) : null;
   res.json({
     outletId,
     brand: getBrandingForOutlet(outletId),
+    checkoutConfig: getCheckoutConfig(session),
     menu: getMenu({ outletId })
   });
 });

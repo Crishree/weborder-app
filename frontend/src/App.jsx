@@ -24,6 +24,12 @@ const DEFAULT_BRANDING = {
   surfaceColor: '#ffffff'
 };
 
+const DEFAULT_CHECKOUT_CONFIG = {
+  marketingOptInEligible: false,
+  marketingOptInDefault: false,
+  marketingOptInLabel: 'Receive updates on WhatsApp'
+};
+
 function getSessionId() {
   const params = new URLSearchParams(window.location.search);
   return params.get('session') || 'demo-session';
@@ -73,7 +79,18 @@ function MenuCard({ item, qty, onAdd, onRemove }) {
   );
 }
 
-function CartDrawer({ open, onClose, cartItems, updateQty, checkout, loading }) {
+function CartDrawer({
+  open,
+  onClose,
+  cartItems,
+  updateQty,
+  checkout,
+  loading,
+  marketingOptInEligible,
+  marketingOptInLabel,
+  marketingOptIn,
+  onMarketingOptInChange
+}) {
   const total = cartItems.reduce((sum, row) => sum + row.price * row.qty, 0);
 
   return (
@@ -106,6 +123,16 @@ function CartDrawer({ open, onClose, cartItems, updateQty, checkout, loading }) 
         )}
 
         <div className="drawer-footer">
+          {marketingOptInEligible && (
+            <label className="consent-row">
+              <input
+                type="checkbox"
+                checked={marketingOptIn}
+                onChange={(event) => onMarketingOptInChange(event.target.checked)}
+              />
+              <span>{marketingOptInLabel}</span>
+            </label>
+          )}
           <div className="total-row">
             <span>Total</span>
             <strong>₹{total}</strong>
@@ -195,6 +222,8 @@ function SuccessPage() {
 function App() {
   const [menu, setMenu] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  const [checkoutConfig, setCheckoutConfig] = useState(DEFAULT_CHECKOUT_CONFIG);
+  const [marketingOptIn, setMarketingOptIn] = useState(DEFAULT_CHECKOUT_CONFIG.marketingOptInDefault);
   const [cart, setCart] = useState({});
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -206,14 +235,20 @@ function App() {
 
   useEffect(() => {
     async function loadMenu() {
-      const suffix = outletId ? `?outletId=${encodeURIComponent(outletId)}` : '';
+      const params = new URLSearchParams();
+      if (outletId) params.set('outletId', outletId);
+      if (sessionId) params.set('sessionId', sessionId);
+      const suffix = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`${API_BASE}/api/menu${suffix}`);
       const data = await res.json();
       setMenu(data.menu || []);
       setBranding({ ...DEFAULT_BRANDING, ...(data.brand || {}) });
+      const nextCheckoutConfig = { ...DEFAULT_CHECKOUT_CONFIG, ...(data.checkoutConfig || {}) };
+      setCheckoutConfig(nextCheckoutConfig);
+      setMarketingOptIn(Boolean(nextCheckoutConfig.marketingOptInDefault));
     }
     if (!isSuccess) loadMenu();
-  }, [isSuccess, outletId]);
+  }, [isSuccess, outletId, sessionId]);
 
   const cartItems = useMemo(() => {
     return buildCartItems(cart, menu);
@@ -233,7 +268,8 @@ function App() {
         apiBase: API_BASE,
         sessionId,
         outletId,
-        cartItems
+        cartItems,
+        marketingOptIn
       });
       window.location.href = paymentLink;
     } catch (e) {
@@ -282,6 +318,10 @@ function App() {
         updateQty={updateQty}
         checkout={checkout}
         loading={loading}
+        marketingOptInEligible={checkoutConfig.marketingOptInEligible}
+        marketingOptInLabel={checkoutConfig.marketingOptInLabel}
+        marketingOptIn={marketingOptIn}
+        onMarketingOptInChange={setMarketingOptIn}
       />
     </div>
   );
