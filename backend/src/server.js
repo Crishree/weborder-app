@@ -1405,19 +1405,25 @@ function renderAdminMenuPage() {
         --ok-text: #0b7a63;
         --shadow: 0 20px 50px rgba(28, 21, 12, 0.08);
         --text-base: 16px;
-        --text-small: 15px;
-        --text-title: 42px;
-        --text-section: 26px;
+        --text-small: 14px;
+        --text-label: 13px;
+        --text-title: 46px;
+        --text-section: 28px;
+        --font-ui: "Avenir Next", "Aptos", "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --font-display: "Iowan Old Style", "New York", "Palatino Linotype", "Book Antiqua", Georgia, serif;
       }
       body {
         margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-family: var(--font-ui);
         background:
           radial-gradient(circle at top left, rgba(255, 227, 154, 0.24), transparent 28%),
           radial-gradient(circle at top right, rgba(10, 111, 92, 0.1), transparent 22%),
           linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
         color: var(--text);
         font-size: var(--text-base);
+        letter-spacing: -0.01em;
+        text-rendering: optimizeLegibility;
+        -webkit-font-smoothing: antialiased;
       }
       .shell { max-width: 1180px; margin: 0 auto; padding: 34px 22px 64px; }
       .hero {
@@ -1450,12 +1456,13 @@ function renderAdminMenuPage() {
       h1 {
         margin: 0 0 10px;
         font-size: var(--text-title);
-        line-height: 0.95;
-        letter-spacing: -0.03em;
-        font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+        line-height: 0.92;
+        letter-spacing: -0.04em;
+        font-weight: 700;
+        font-family: var(--font-display);
       }
-      h2 { margin: 0; font-size: var(--text-section); letter-spacing: -0.02em; }
-      p { line-height: 1.55; font-size: var(--text-base); color: var(--muted); }
+      h2 { margin: 0; font-size: var(--text-section); line-height: 1.05; letter-spacing: -0.035em; font-weight: 700; font-family: var(--font-display); }
+      p { line-height: 1.58; font-size: var(--text-base); color: var(--muted); }
       .grid { display: grid; gap: 22px; margin-top: 26px; }
       .panel {
         background: linear-gradient(180deg, var(--surface-strong), var(--surface));
@@ -1466,7 +1473,7 @@ function renderAdminMenuPage() {
         backdrop-filter: blur(10px);
       }
       .panel > h2 + .hint { margin-top: 10px; }
-      label { display: block; font-weight: 800; margin-bottom: 8px; font-size: var(--text-small); letter-spacing: -0.01em; }
+      label { display: block; font-weight: 800; margin-bottom: 8px; font-size: var(--text-label); letter-spacing: 0.01em; text-transform: uppercase; }
       input[type="text"], input[type="number"], textarea, .field-textarea {
         width: 100%;
         border-radius: 16px;
@@ -1498,6 +1505,7 @@ function renderAdminMenuPage() {
         align-items: center;
         justify-content: center;
         font-size: var(--text-small);
+        letter-spacing: 0.01em;
         transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
       }
       button:hover, .file-label:hover, .link-btn:hover { transform: translateY(-1px); box-shadow: 0 10px 20px rgba(23, 20, 17, 0.08); }
@@ -1509,8 +1517,8 @@ function renderAdminMenuPage() {
       .status.show { display: block; }
       .status.ok { background: var(--ok-bg); color: var(--ok-text); border-color: rgba(11, 122, 99, 0.12); }
       .status.error { background: var(--danger-bg); color: var(--danger-text); border-color: rgba(177, 38, 29, 0.12); }
-      .hint { color: var(--muted); font-size: var(--text-small); }
-      .micro-copy { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.45; }
+      .hint { color: var(--muted); font-size: var(--text-small); line-height: 1.55; }
+      .micro-copy { margin-top: 8px; color: var(--muted); font-size: 13px; line-height: 1.5; }
       .note-card { margin-top: 18px; padding: 16px 18px; border-radius: 20px; background: linear-gradient(180deg, #fffaf1, #f7efdf); border: 1px solid rgba(142, 115, 68, 0.16); }
       .note-card strong { display: block; margin-bottom: 6px; font-size: 15px; }
       .preview { margin-top: 18px; display: grid; gap: 12px; }
@@ -1518,7 +1526,7 @@ function renderAdminMenuPage() {
       .preview-card strong { display: block; margin-bottom: 4px; }
       .data-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: var(--text-small); }
       .data-table th, .data-table td { text-align: left; padding: 12px 10px; border-bottom: 1px solid #ece5d9; vertical-align: top; }
-      .data-table th { color: var(--muted); font-weight: 800; }
+      .data-table th { color: var(--muted); font-weight: 800; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; }
       .pill { display: inline-flex; align-items: center; border-radius: 999px; padding: 5px 11px; background: var(--surface-muted); font-size: 14px; font-weight: 800; }
       .menu-items { display: grid; gap: 18px; margin-top: 18px; }
       .menu-item { border: 1px solid #ece5d9; border-radius: 22px; padding: 18px; background: #fffcf6; display: grid; gap: 14px; }
@@ -1535,7 +1543,7 @@ function renderAdminMenuPage() {
       summary { cursor: pointer; font-weight: 800; font-size: var(--text-small); }
       select { width: 100%; border-radius: 16px; border: 1px solid var(--line); padding: 13px 15px; font: inherit; box-sizing: border-box; background: rgba(255,255,255,0.92); }
       .outlet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
-      .field-group-title { margin: 8px 0 0; font-size: 13px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+      .field-group-title { margin: 8px 0 0; font-size: 12px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); }
       @media (max-width: 720px) {
         .item-grid, .outlet-grid { grid-template-columns: 1fr; }
         .shell { padding-inline: 16px; }
