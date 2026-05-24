@@ -1575,9 +1575,9 @@ function renderAdminMenuPage() {
           <label for="brand-select">Current Brand</label>
           <select id="brand-select"></select>
           <div class="actions">
-            <button class="secondary" id="add-brand" type="button">Add Brand</button>
-            <button class="secondary" id="remove-brand" type="button">Remove Brand</button>
-            <button class="primary" id="save-brands" type="button">Save Brands</button>
+            <button class="secondary" id="add-brand" type="button">Add brand</button>
+            <button class="secondary" id="remove-brand" type="button">Remove brand</button>
+            <button class="primary" id="save-brands" type="button">Save brands</button>
           </div>
           <div id="brand-status" class="status"></div>
           <div id="brand-form" class="outlet-grid"></div>
@@ -1589,8 +1589,8 @@ function renderAdminMenuPage() {
           <label for="outlet-select">Current Outlet</label>
           <select id="outlet-select"></select>
           <div class="actions">
-            <button class="secondary" id="add-outlet" type="button">Add Outlet</button>
-            <button class="primary" id="save-outlets" type="button">Save Outlets</button>
+            <button class="secondary" id="add-outlet" type="button">Add outlet</button>
+            <button class="primary" id="save-outlets" type="button">Save outlets</button>
           </div>
           <div id="outlet-status" class="status"></div>
           <div id="outlet-form" class="outlet-grid"></div>
@@ -1622,12 +1622,12 @@ function renderAdminMenuPage() {
           <h2>Image Upload</h2>
           <p class="hint">Upload a menu image for the selected outlet. The backend will host it, store the metadata, and return a URL you can paste into the menu item's image field.</p>
           <div class="actions">
-            <label class="file-label" for="image-file">Choose Image</label>
+            <label class="file-label" for="image-file">Choose image</label>
             <input id="image-file" type="file" accept="image/*" />
             <button class="primary" id="upload-image" type="button">Upload Image</button>
           </div>
           <div id="image-status" class="status"></div>
-          <label for="image-url" style="margin-top: 16px;">Uploaded Image URL</label>
+          <label for="image-url" style="margin-top: 16px;">Uploaded image URL</label>
           <textarea id="image-url" style="min-height: 88px;"></textarea>
         </section>
 
@@ -1694,7 +1694,7 @@ function renderAdminMenuPage() {
             <label class="file-label" for="marketing-image-file">Upload Campaign Image</label>
             <input id="marketing-image-file" type="file" accept="image/*" />
           </div>
-          <label for="marketing-image-url">Campaign Image URL</label>
+          <label for="marketing-image-url">Campaign image URL</label>
           <input id="marketing-image-url" type="text" placeholder="Upload an image or paste an existing public image URL" />
           <label for="marketing-caption">Caption</label>
           <textarea id="marketing-caption" style="min-height: 88px;"></textarea>
@@ -2039,26 +2039,26 @@ function renderAdminMenuPage() {
       function renderBrandForm(selectedIndex) {
         const brand = brandState[selectedIndex] || defaultBrand();
         brandForm.innerHTML =
-          '<div><label>Brand ID</label><input type="text" data-brand-field="id" value="' + escapeHtml(brand.id) + '" /></div>' +
-          '<div><label>Brand Name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" /></div>' +
-          '<div><label>Customer App Base URL (optional)</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" placeholder="https://brand.pikquik.com" /><div class="micro-copy">Used for WhatsApp, campaign, and payment-success links when this brand owns its own domain.</div></div>' +
-          '<div><label>Hero Eyebrow</label><input type="text" data-brand-field="heroEyebrow" value="' + escapeHtml(brand.heroEyebrow || '') + '" /></div>' +
+          '<div><label>Brand id</label><input type="text" data-brand-field="id" value="' + escapeHtml(brand.id) + '" /></div>' +
+          '<div><label>Brand name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" /></div>' +
+          '<div><label>Customer app base URL (optional)</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" placeholder="https://brand.pikquik.com" /><div class="micro-copy">Used for WhatsApp, campaign, and payment-success links when this brand owns its own domain.</div></div>' +
+          '<div><label>Hero eyebrow</label><input type="text" data-brand-field="heroEyebrow" value="' + escapeHtml(brand.heroEyebrow || '') + '" /></div>' +
           '<div class="full field-group-title">Customer-facing identity</div>' +
-          '<div><label>Hero Title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
-          '<div class="full"><label>Hero Subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
-          '<div><label>Logo Text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
-          '<div><label>Logo Width (px)</label><input type="number" min="40" max="320" step="1" data-brand-field="logoWidth" value="' + escapeHtml(brand.logoWidth || 160) + '" /></div>' +
-          '<div><label>Logo Height (px)</label><input type="number" min="20" max="120" step="1" data-brand-field="logoHeight" value="' + escapeHtml(brand.logoHeight || 36) + '" /></div>' +
-          '<div class="full"><label>Brand Logo</label><div class="image-tools"><label class="file-label" for="brand-logo-file">Upload Logo</label><input id="brand-logo-file" type="file" accept="image/*" data-brand-logo-file="true" /></div>' +
+          '<div><label>Hero title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
+          '<div class="full"><label>Hero subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
+          '<div><label>Logo text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
+          '<div><label>Logo width (px)</label><input type="number" min="40" max="320" step="1" data-brand-field="logoWidth" value="' + escapeHtml(brand.logoWidth || 160) + '" /></div>' +
+          '<div><label>Logo height (px)</label><input type="number" min="20" max="120" step="1" data-brand-field="logoHeight" value="' + escapeHtml(brand.logoHeight || 36) + '" /></div>' +
+          '<div class="full"><label>Brand logo</label><div class="image-tools"><label class="file-label" for="brand-logo-file">Upload logo</label><input id="brand-logo-file" type="file" accept="image/*" data-brand-logo-file="true" /></div>' +
           '<input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" placeholder="Logo will be uploaded and linked automatically" readonly />' +
           (brand.logoUrl ? '<div style="margin-top:8px;"><img class="image-preview" src="' + escapeHtml(brand.logoUrl) + '" alt="' + escapeHtml(brand.name || 'Brand logo') + '" style="max-width:' + escapeHtml(String(brand.logoWidth || 160)) + 'px; max-height:' + escapeHtml(String(brand.logoHeight || 36)) + 'px; width:auto; height:auto;" /></div>' : '') +
           '</div>' +
           '<div class="full field-group-title">Visual system</div>' +
-          '<div><label>Primary Color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +
-          '<div><label>Accent Color</label><input type="text" data-brand-field="accentColor" value="' + escapeHtml(brand.accentColor || '#ffd84d') + '" /></div>' +
-          '<div><label>Accent Text Color</label><input type="text" data-brand-field="accentTextColor" value="' + escapeHtml(brand.accentTextColor || '#202020') + '" /></div>' +
-          '<div><label>Background Color</label><input type="text" data-brand-field="backgroundColor" value="' + escapeHtml(brand.backgroundColor || '#fffaf0') + '" /></div>' +
-          '<div><label>Surface Color</label><input type="text" data-brand-field="surfaceColor" value="' + escapeHtml(brand.surfaceColor || '#ffffff') + '" /></div>';
+          '<div><label>Primary color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +
+          '<div><label>Accent color</label><input type="text" data-brand-field="accentColor" value="' + escapeHtml(brand.accentColor || '#ffd84d') + '" /></div>' +
+          '<div><label>Accent text color</label><input type="text" data-brand-field="accentTextColor" value="' + escapeHtml(brand.accentTextColor || '#202020') + '" /></div>' +
+          '<div><label>Background color</label><input type="text" data-brand-field="backgroundColor" value="' + escapeHtml(brand.backgroundColor || '#fffaf0') + '" /></div>' +
+          '<div><label>Surface color</label><input type="text" data-brand-field="surfaceColor" value="' + escapeHtml(brand.surfaceColor || '#ffffff') + '" /></div>';
       }
 
       function renderOutletSelector() {
@@ -2073,21 +2073,21 @@ function renderAdminMenuPage() {
           '<option value="' + escapeHtml(brand.id) + '"' + (outlet.brandId === brand.id ? ' selected' : '') + '>' + escapeHtml(brand.name || brand.id) + '</option>'
         ).join('');
         outletForm.innerHTML =
-          '<div><label>Outlet ID</label><input type="text" data-outlet-field="id" value="' + escapeHtml(outlet.id) + '" /></div>' +
+          '<div><label>Outlet id</label><input type="text" data-outlet-field="id" value="' + escapeHtml(outlet.id) + '" /></div>' +
           '<div><label>Brand</label><select data-outlet-field="brandId">' + brandOptions + '</select></div>' +
-          '<div><label>Outlet Name</label><input type="text" data-outlet-field="name" value="' + escapeHtml(outlet.name) + '" /></div>' +
-          '<div><label>Status</label><select data-outlet-field="status"><option value="ACTIVE"' + (outlet.status === 'ACTIVE' ? ' selected' : '') + '>ACTIVE</option><option value="INACTIVE"' + (outlet.status === 'INACTIVE' ? ' selected' : '') + '>INACTIVE</option></select></div>' +
-          '<div><label>Pickup Label</label><input type="text" data-outlet-field="pickupLabel" value="' + escapeHtml(outlet.pickupLabel) + '" /></div>' +
+          '<div><label>Outlet name</label><input type="text" data-outlet-field="name" value="' + escapeHtml(outlet.name) + '" /></div>' +
+          '<div><label>Status</label><select data-outlet-field="status"><option value="ACTIVE"' + (outlet.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (outlet.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
+          '<div><label>Pickup label</label><input type="text" data-outlet-field="pickupLabel" value="' + escapeHtml(outlet.pickupLabel) + '" /></div>' +
           '<div><label>Address</label><input type="text" data-outlet-field="address" value="' + escapeHtml(outlet.address) + '" /></div>' +
-          '<div><label>Outlet URL Override</label><input type="text" data-outlet-field="customerAppBaseUrl" value="' + escapeHtml(outlet.customerAppBaseUrl || '') + '" /></div>' +
+          '<div><label>Outlet URL override</label><input type="text" data-outlet-field="customerAppBaseUrl" value="' + escapeHtml(outlet.customerAppBaseUrl || '') + '" /></div>' +
           '<div><label>Latitude</label><input type="text" data-outlet-field="latitude" value="' + escapeHtml(outlet.latitude ?? '') + '" /></div>' +
           '<div><label>Longitude</label><input type="text" data-outlet-field="longitude" value="' + escapeHtml(outlet.longitude ?? '') + '" /></div>' +
-          '<div><label>Location Keywords</label><input type="text" data-outlet-field="locationKeywords" value="' + escapeHtml(Array.isArray(outlet.locationKeywords) ? outlet.locationKeywords.join(', ') : outlet.locationKeywords || '') + '" /></div>' +
+          '<div><label>Location keywords</label><input type="text" data-outlet-field="locationKeywords" value="' + escapeHtml(Array.isArray(outlet.locationKeywords) ? outlet.locationKeywords.join(', ') : outlet.locationKeywords || '') + '" /></div>' +
           '<div><label>Timezone</label><input type="text" data-outlet-field="timezone" value="' + escapeHtml(outlet.timezone) + '" /></div>' +
-          '<div><label>Payment Provider</label><input type="text" data-outlet-field="paymentProvider" value="' + escapeHtml(outlet.paymentProvider) + '" /></div>' +
-          '<div><label>Payment Mode</label><input type="text" data-outlet-field="paymentMode" value="' + escapeHtml(outlet.paymentMode) + '" /></div>' +
-          '<div><label>Petpooja Outlet ID</label><input type="text" data-outlet-field="petpoojaOutletId" value="' + escapeHtml(outlet.petpoojaOutletId) + '" /></div>' +
-          '<div><label>Support Phone</label><input type="text" data-outlet-field="supportPhone" value="' + escapeHtml(outlet.supportPhone) + '" /></div>';
+          '<div><label>Payment provider</label><input type="text" data-outlet-field="paymentProvider" value="' + escapeHtml(outlet.paymentProvider) + '" /></div>' +
+          '<div><label>Payment mode</label><input type="text" data-outlet-field="paymentMode" value="' + escapeHtml(outlet.paymentMode) + '" /></div>' +
+          '<div><label>Petpooja outlet id</label><input type="text" data-outlet-field="petpoojaOutletId" value="' + escapeHtml(outlet.petpoojaOutletId) + '" /></div>' +
+          '<div><label>Support phone</label><input type="text" data-outlet-field="supportPhone" value="' + escapeHtml(outlet.supportPhone) + '" /></div>';
       }
 
       function syncOutletStateFromForm() {
@@ -2140,14 +2140,14 @@ function renderAdminMenuPage() {
           '<div class="item-head">' +
             '<strong>Item ' + (index + 1) + '</strong>' +
             '<div class="item-head-actions">' +
-              '<button class="secondary move-up" type="button">Move Up</button>' +
-              '<button class="secondary move-down" type="button">Move Down</button>' +
+              '<button class="secondary move-up" type="button">Move up</button>' +
+              '<button class="secondary move-down" type="button">Move down</button>' +
               '<button class="danger delete-item" type="button">Delete</button>' +
             '</div>' +
           '</div>' +
           '<div class="item-grid">' +
-            '<div><label>ID</label><input type="text" data-field="id" value="' + escapeHtml(item.id) + '" /></div>' +
-            '<div><label>Petpooja Item ID</label><input type="text" data-field="petpoojaItemId" value="' + escapeHtml(item.petpoojaItemId) + '" /></div>' +
+            '<div><label>Item id</label><input type="text" data-field="id" value="' + escapeHtml(item.id) + '" /></div>' +
+            '<div><label>Petpooja item id</label><input type="text" data-field="petpoojaItemId" value="' + escapeHtml(item.petpoojaItemId) + '" /></div>' +
             '<div><label>Name</label><input type="text" data-field="name" value="' + escapeHtml(item.name) + '" /></div>' +
             '<div><label>Price</label><input type="number" min="0" step="0.01" data-field="price" value="' + escapeHtml(item.price) + '" /></div>' +
             '<div><label>Category</label><input type="text" list="' + categoryListId + '" data-field="category" value="' + escapeHtml(item.category) + '" /><datalist id="' + categoryListId + '">' +
@@ -2155,9 +2155,9 @@ function renderAdminMenuPage() {
             '</datalist></div>' +
             '<div><label>Image URL</label><input type="text" data-field="image" value="' + escapeHtml(item.image) + '" />' +
               '<div class="image-tools">' +
-                '<label class="file-label" for="row-image-file-' + index + '">Choose Image</label>' +
+                '<label class="file-label" for="row-image-file-' + index + '">Choose image</label>' +
                 '<input id="row-image-file-' + index + '" type="file" accept="image/*" data-row-image-file="true" />' +
-                '<button class="secondary upload-row-image" type="button">Upload to This Item</button>' +
+                '<button class="secondary upload-row-image" type="button">Upload to item</button>' +
               '</div>' +
             '</div>' +
             '<div class="full">' + (hasImage
