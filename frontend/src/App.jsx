@@ -33,6 +33,11 @@ const DEFAULT_CHECKOUT_CONFIG = {
   marketingOptInLabel: 'Receive updates on WhatsApp'
 };
 
+const DEFAULT_SHOWCASE = {
+  brands: [],
+  outlets: []
+};
+
 function getSessionId() {
   const params = new URLSearchParams(window.location.search);
   return params.get('session') || 'demo-session';
@@ -41,6 +46,19 @@ function getSessionId() {
 function getOutletId() {
   const params = new URLSearchParams(window.location.search);
   return params.get('outlet') || '';
+}
+
+function getHostname() {
+  return window.location.hostname.toLowerCase();
+}
+
+function normalizeUrlHost(url) {
+  if (!url) return '';
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return '';
+  }
 }
 
 function BrandMark({ branding }) {
@@ -59,6 +77,82 @@ function BrandMark({ branding }) {
   }
 
   return <div className="brand-mark">{branding.logoText || branding.brandName}</div>;
+}
+
+function ProductLanding({ showcase }) {
+  return (
+    <div className="showcase-page">
+      <section className="showcase-hero">
+        <p className="showcase-kicker">PikQuik Platform</p>
+        <h1>Pickup commerce infrastructure for modern food brands.</h1>
+        <p className="showcase-copy">
+          Launch branded storefronts, prepaid checkout, WhatsApp journeys, and outlet operations from one operating layer.
+        </p>
+      </section>
+
+      <section className="showcase-grid">
+        <article className="showcase-panel showcase-panel-highlight">
+          <p className="showcase-label">What it handles</p>
+          <ul className="showcase-list">
+            <li>Brand-owned storefronts per domain</li>
+            <li>Outlet-aware ordering and pickup flows</li>
+            <li>WhatsApp acquisition, updates, and campaigns</li>
+            <li>Admin control for menu, payments, and branding</li>
+          </ul>
+        </article>
+
+        <article className="showcase-panel">
+          <p className="showcase-label">Built for teams that need</p>
+          <div className="showcase-metrics">
+            <div><strong>Fast rollout</strong><span>Go live brand by brand, not city by city.</span></div>
+            <div><strong>Shared operations</strong><span>One console for menus, campaigns, and payment visibility.</span></div>
+            <div><strong>Brand flexibility</strong><span>Each brand keeps its own domain, theme, and voice.</span></div>
+          </div>
+        </article>
+      </section>
+
+      <section className="brand-showcase">
+        <div className="section-copy">
+          <p className="showcase-label">Live storefront previews</p>
+          <h2>Preview the same engine across different brand identities.</h2>
+        </div>
+        <div className="brand-card-grid">
+          {showcase.brands.map((brand) => (
+            <BrandPreviewCard key={brand.id} brand={brand} />
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function BrandPreviewCard({ brand }) {
+  const previewHref = brand.customerAppBaseUrl || (brand.primaryOutletId ? `/?outlet=${brand.primaryOutletId}` : '#');
+  const previewLabel = brand.activeOutletCount ? `${brand.activeOutletCount} live outlet${brand.activeOutletCount > 1 ? 's' : ''}` : 'Brand preview';
+
+  return (
+    <article
+      className="brand-preview-card"
+      style={{
+        '--brand-primary': brand.primaryColor || DEFAULT_BRANDING.primaryColor,
+        '--brand-accent': brand.accentColor || DEFAULT_BRANDING.accentColor,
+        '--brand-accent-text': brand.accentTextColor || DEFAULT_BRANDING.accentTextColor,
+        '--brand-background': brand.backgroundColor || DEFAULT_BRANDING.backgroundColor,
+        '--brand-surface': brand.surfaceColor || DEFAULT_BRANDING.surfaceColor
+      }}
+    >
+      <div className="brand-preview-head">
+        <BrandMark branding={brand} />
+        <span>{previewLabel}</span>
+      </div>
+      <p className="showcase-label">{brand.heroEyebrow}</p>
+      <h3>{brand.heroTitle}</h3>
+      <p>{brand.heroSubtitle}</p>
+      <a className="preview-link" href={previewHref}>
+        Preview storefront
+      </a>
+    </article>
+  );
 }
 
 function MenuCard({ item, qty, onAdd, onRemove }) {
@@ -231,6 +325,7 @@ function SuccessPage() {
 function App() {
   const [menu, setMenu] = useState([]);
   const [branding, setBranding] = useState(DEFAULT_BRANDING);
+  const [showcase, setShowcase] = useState(DEFAULT_SHOWCASE);
   const [checkoutConfig, setCheckoutConfig] = useState(DEFAULT_CHECKOUT_CONFIG);
   const [marketingOptIn, setMarketingOptIn] = useState(DEFAULT_CHECKOUT_CONFIG.marketingOptInDefault);
   const [cart, setCart] = useState({});
@@ -241,11 +336,33 @@ function App() {
   const outletId = getOutletId();
 
   const isSuccess = window.location.pathname.includes('success');
+  const [resolvedOutletId, setResolvedOutletId] = useState(outletId);
+  const [showLanding, setShowLanding] = useState(!outletId);
 
   useEffect(() => {
-    async function loadMenu() {
+    async function loadPageState() {
+      const showcaseRes = await fetch(`${API_BASE}/api/showcase`);
+      const showcaseData = await showcaseRes.json();
+      if (showcaseData.brands || showcaseData.outlets) {
+        setShowcase({
+          brands: showcaseData.brands || [],
+          outlets: showcaseData.outlets || []
+        });
+      }
+
+      const hostBrand = (showcaseData.brands || []).find((brand) => normalizeUrlHost(brand.customerAppBaseUrl) === getHostname());
+      const nextOutletId = outletId || hostBrand?.primaryOutletId || '';
+      const shouldShowLanding = !outletId && !hostBrand && !sessionId;
+
+      setResolvedOutletId(nextOutletId);
+      setShowLanding(shouldShowLanding);
+
+      if (shouldShowLanding) {
+        return;
+      }
+
       const params = new URLSearchParams();
-      if (outletId) params.set('outletId', outletId);
+      if (nextOutletId) params.set('outletId', nextOutletId);
       if (sessionId) params.set('sessionId', sessionId);
       const suffix = params.toString() ? `?${params.toString()}` : '';
       const res = await fetch(`${API_BASE}/api/menu${suffix}`);
@@ -256,7 +373,7 @@ function App() {
       setCheckoutConfig(nextCheckoutConfig);
       setMarketingOptIn(Boolean(nextCheckoutConfig.marketingOptInDefault));
     }
-    if (!isSuccess) loadMenu();
+    if (!isSuccess) loadPageState();
   }, [isSuccess, outletId, sessionId]);
 
   const cartItems = useMemo(() => {
@@ -276,7 +393,7 @@ function App() {
       const paymentLink = await submitCheckout({
         apiBase: API_BASE,
         sessionId,
-        outletId,
+        outletId: resolvedOutletId,
         cartItems,
         marketingOptIn
       });
@@ -289,6 +406,7 @@ function App() {
   }
 
   if (isSuccess) return <SuccessPage />;
+  if (showLanding) return <ProductLanding showcase={showcase} />;
 
   return (
     <div className="page themed-page" style={getThemeStyle(branding)}>

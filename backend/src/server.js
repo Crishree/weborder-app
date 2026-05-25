@@ -768,6 +768,33 @@ function getBrandingForOutlet(outletId) {
   };
 }
 
+function buildShowcaseBrand(brand) {
+  const brandOutlets = outlets.filter((outlet) => outlet.brandId === brand.id);
+  const activeOutlets = brandOutlets.filter((outlet) => outlet.status === 'ACTIVE');
+  const primaryOutlet = activeOutlets[0] || brandOutlets[0] || null;
+  return {
+    id: brand.id,
+    name: brand.name,
+    customerAppBaseUrl: brand.customerAppBaseUrl || '',
+    heroEyebrow: brand.heroEyebrow,
+    heroTitle: brand.heroTitle,
+    heroSubtitle: brand.heroSubtitle,
+    logoText: brand.logoText,
+    logoUrl: brand.logoUrl,
+    logoWidth: brand.logoWidth,
+    logoHeight: brand.logoHeight,
+    primaryColor: brand.primaryColor,
+    accentColor: brand.accentColor,
+    accentTextColor: brand.accentTextColor,
+    backgroundColor: brand.backgroundColor,
+    surfaceColor: brand.surfaceColor,
+    primaryOutletId: primaryOutlet?.id || '',
+    primaryOutletName: primaryOutlet?.name || '',
+    outletCount: brandOutlets.length,
+    activeOutletCount: activeOutlets.length
+  };
+}
+
 export function replaceBrands(nextBrands, { persist = true } = {}) {
   const normalizedBrands = normalizeBrands(nextBrands);
   const brandIds = new Set(normalizedBrands.map((brand) => brand.id));
@@ -3143,6 +3170,20 @@ app.get('/api/menu', (req, res) => {
 app.get('/api/branding', (req, res) => {
   const outletId = String(req.query.outletId || getDefaultOutletId());
   res.json({ branding: getBrandingForOutlet(outletId) });
+});
+
+app.get('/api/showcase', (req, res) => {
+  res.json({
+    brands: getBrands().map(buildShowcaseBrand),
+    outlets: getOutlets().map((outlet) => ({
+      id: outlet.id,
+      brandId: outlet.brandId,
+      name: outlet.name,
+      status: outlet.status,
+      pickupLabel: outlet.pickupLabel,
+      address: outlet.address
+    }))
+  });
 });
 
 app.get('/api/admin/outlets', (req, res) => {
