@@ -1518,7 +1518,7 @@ function renderAdminMenuPage() {
         border: none;
         border-radius: 999px;
         min-height: 46px;
-        min-width: 148px;
+        min-width: 160px;
         padding: 0 22px;
         font-weight: 600;
         cursor: pointer;
@@ -1557,12 +1557,16 @@ function renderAdminMenuPage() {
       .menu-item { border: 1px solid #ece5d9; border-radius: 22px; padding: 18px; background: #fffcf6; display: grid; gap: 14px; }
       .item-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
       .item-head strong { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; font-family: var(--font-ui); }
-      .item-head-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+      .item-head-actions {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 156px));
+        gap: 8px;
+        align-items: stretch;
+      }
       .item-head-actions button {
         min-height: 42px;
-        width: 144px;
-        min-width: 144px;
-        flex: 0 0 144px;
+        width: 100%;
+        min-width: 0;
         padding-inline: 18px;
       }
       .item-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
@@ -1571,13 +1575,18 @@ function renderAdminMenuPage() {
       .checkbox-row input { width: 18px; height: 18px; }
       .image-preview { width: 100%; max-width: 180px; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 16px; border: 1px solid #ece5d9; background: #f3eee4; }
       .image-preview.empty { display: grid; place-items: center; color: #7b7569; font-size: var(--text-small); padding: 14px; }
-      .image-tools { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; margin-top: 10px; }
+      .image-tools {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 200px));
+        align-items: stretch;
+        gap: 10px;
+        margin-top: 10px;
+      }
       .image-tools .file-label,
       .image-tools button {
         min-height: 40px;
-        width: 188px;
-        min-width: 188px;
-        flex: 0 0 188px;
+        width: 100%;
+        min-width: 0;
         padding-inline: 18px;
       }
       details { border: 1px solid #ece5d9; border-radius: 20px; padding: 16px 18px; background: #fffcf6; margin-top: 18px; }
@@ -1588,6 +1597,7 @@ function renderAdminMenuPage() {
       .checkbox-row label { margin: 0; font-size: var(--text-small); font-weight: 500; letter-spacing: 0; text-transform: none; }
       @media (max-width: 720px) {
         .item-grid, .outlet-grid { grid-template-columns: 1fr; }
+        .item-head-actions, .image-tools { grid-template-columns: 1fr; }
         .shell { padding-inline: 16px; }
         .hero { padding: 24px; }
         h1 { font-size: 34px; }
