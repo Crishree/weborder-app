@@ -48,8 +48,6 @@ const defaultBrands = [
     heroSubtitle: 'Launch branded ordering, payments, and WhatsApp re-engagement from one operating layer.',
     logoText: 'PikQuik',
     logoUrl: '',
-    logoWidth: 160,
-    logoHeight: 36,
     primaryColor: '#007a63',
     accentColor: '#ffd84d',
     accentTextColor: '#202020',
@@ -206,8 +204,6 @@ function normalizeBrands(rawBrands) {
       heroSubtitle: String(brand.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.').trim(),
       logoText: String(brand.logoText || brand.name || '').trim(),
       logoUrl: String(brand.logoUrl || '').trim(),
-      logoWidth: Number(brand.logoWidth || 160),
-      logoHeight: Number(brand.logoHeight || 36),
       primaryColor: String(brand.primaryColor || '#007a63').trim(),
       accentColor: String(brand.accentColor || '#ffd84d').trim(),
       accentTextColor: String(brand.accentTextColor || '#202020').trim(),
@@ -752,8 +748,6 @@ function getBrandingForOutlet(outletId) {
     brandName: brand?.name || outlet?.name || 'Brand',
     logoText: brand?.logoText || brand?.name || outlet?.name || 'Brand',
     logoUrl: brand?.logoUrl || '',
-    logoWidth: Number(brand?.logoWidth || 160),
-    logoHeight: Number(brand?.logoHeight || 36),
     heroEyebrow: brand?.heroEyebrow || outlet?.pickupLabel || 'Pickup counter',
     heroTitle: brand?.heroTitle || 'Order ahead, pick up faster',
     heroSubtitle: brand?.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.',
@@ -781,8 +775,6 @@ function buildShowcaseBrand(brand) {
     heroSubtitle: brand.heroSubtitle,
     logoText: brand.logoText,
     logoUrl: brand.logoUrl,
-    logoWidth: brand.logoWidth,
-    logoHeight: brand.logoHeight,
     primaryColor: brand.primaryColor,
     accentColor: brand.accentColor,
     accentTextColor: brand.accentTextColor,
@@ -1852,8 +1844,6 @@ function renderAdminMenuPage() {
           heroSubtitle: '',
           logoText: '',
           logoUrl: '',
-          logoWidth: '160',
-          logoHeight: '36',
           primaryColor: '#007a63',
           accentColor: '#ffd84d',
           accentTextColor: '#202020',
@@ -2105,11 +2095,9 @@ function renderAdminMenuPage() {
           '<div><label>Hero title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
           '<div class="full"><label>Hero subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
           '<div><label>Logo text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
-          '<div><label>Logo width (px)</label><input type="number" min="40" max="320" step="1" data-brand-field="logoWidth" value="' + escapeHtml(brand.logoWidth || 160) + '" /></div>' +
-          '<div><label>Logo height (px)</label><input type="number" min="20" max="120" step="1" data-brand-field="logoHeight" value="' + escapeHtml(brand.logoHeight || 36) + '" /></div>' +
           '<div class="full"><label>Brand logo</label><div class="image-tools"><label class="file-label" for="brand-logo-file">Upload logo</label><input id="brand-logo-file" type="file" accept="image/*" data-brand-logo-file="true" /></div>' +
           '<input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" placeholder="Logo will be uploaded and linked automatically" readonly />' +
-          (brand.logoUrl ? '<div style="margin-top:8px;"><img class="image-preview" src="' + escapeHtml(brand.logoUrl) + '" alt="' + escapeHtml(brand.name || 'Brand logo') + '" style="max-width:' + escapeHtml(String(brand.logoWidth || 160)) + 'px; max-height:' + escapeHtml(String(brand.logoHeight || 36)) + 'px; width:auto; height:auto;" /></div>' : '') +
+          (brand.logoUrl ? '<div style="margin-top:8px;"><img class="image-preview" src="' + escapeHtml(brand.logoUrl) + '" alt="' + escapeHtml(brand.name || 'Brand logo') + '" style="max-width:180px; max-height:56px; width:auto; height:auto; object-fit:contain;" /></div>' : '') +
           '</div>' +
           '<div class="full field-group-title">Visual system</div>' +
           '<div><label>Primary color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +

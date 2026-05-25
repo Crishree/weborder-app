@@ -18,8 +18,6 @@ const DEFAULT_BRANDING = {
   heroTitle: 'Fast pickup for modern food brands',
   heroSubtitle: 'Launch branded ordering, payments, and WhatsApp re-engagement from one operating layer.',
   logoUrl: '',
-  logoWidth: 160,
-  logoHeight: 36,
   primaryColor: '#007a63',
   accentColor: '#ffd84d',
   accentTextColor: '#202020',
@@ -64,13 +62,7 @@ function normalizeUrlHost(url) {
 function BrandMark({ branding }) {
   if (branding.logoUrl) {
     return (
-      <div
-        className="brand-mark brand-mark-image"
-        style={{
-          '--brand-logo-width': `${branding.logoWidth || DEFAULT_BRANDING.logoWidth}px`,
-          '--brand-logo-height': `${branding.logoHeight || DEFAULT_BRANDING.logoHeight}px`
-        }}
-      >
+      <div className="brand-mark brand-mark-image">
         <img src={branding.logoUrl} alt={branding.brandName || branding.logoText || 'Brand logo'} />
       </div>
     );
