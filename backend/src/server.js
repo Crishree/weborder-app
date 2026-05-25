@@ -2215,7 +2215,6 @@ function renderAdminMenuPage() {
               '<div class="image-tools">' +
                 '<label class="file-label" for="row-image-file-' + index + '">Choose image</label>' +
                 '<input id="row-image-file-' + index + '" type="file" accept="image/*" data-row-image-file="true" />' +
-                '<button class="secondary upload-row-image" type="button">Upload to item</button>' +
               '</div>' +
             '</div>' +
             '<div class="full">' + (hasImage
@@ -2522,31 +2521,32 @@ function renderAdminMenuPage() {
         syncJsonFromEditor();
       });
 
+      menuItemsContainer.addEventListener('change', (event) => {
+        const fileInput = event.target.closest('[data-row-image-file="true"]');
+        if (!fileInput) return;
+        const card = fileInput.closest('.menu-item');
+        const imageField = card?.querySelector('[data-field="image"]');
+        const file = fileInput.files[0];
+        if (!card || !imageField || !file) return;
+
+        uploadImageFile(file)
+          .then((imageUrl) => {
+            imageField.value = imageUrl;
+            updateImagePreview(card);
+            syncJsonFromEditor();
+            setImageStatus('Image uploaded into the selected item.', 'ok');
+            return loadOrdersAndPayments();
+          })
+          .catch((error) => {
+            setImageStatus(error.message, 'error');
+          });
+      });
+
       menuItemsContainer.addEventListener('click', (event) => {
         const card = event.target.closest('.menu-item');
         if (!card) return;
 
-        if (event.target.classList.contains('upload-row-image')) {
-          const fileInput = card.querySelector('[data-row-image-file="true"]');
-          const imageField = card.querySelector('[data-field="image"]');
-          const file = fileInput.files[0];
-          if (!file) {
-            setImageStatus('Choose an image for that row first.', 'error');
-            return;
-          }
-          uploadImageFile(file)
-            .then((imageUrl) => {
-              imageField.value = imageUrl;
-              updateImagePreview(card);
-              syncJsonFromEditor();
-              setImageStatus('Image uploaded into the selected item.', 'ok');
-              return loadOrdersAndPayments();
-            })
-            .catch((error) => {
-              setImageStatus(error.message, 'error');
-            });
-          return;
-        } else if (event.target.classList.contains('delete-item')) {
+        if (event.target.classList.contains('delete-item')) {
           card.remove();
         } else if (event.target.classList.contains('move-up')) {
           const previous = card.previousElementSibling;
