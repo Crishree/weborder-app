@@ -1731,13 +1731,18 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>WhatsApp Marketing</h2>
-          <p class="hint">Select previous customers from this outlet, upload a campaign image, add a caption, and send a simple daily WhatsApp campaign.</p>
+          <p class="hint">Build a simple daily WhatsApp campaign in three steps: choose the audience, upload the campaign image, then send the message.</p>
+          <div id="marketing-status" class="status"></div>
           <div class="actions">
             <button class="secondary" id="refresh-marketing-audience" type="button">Refresh Audience</button>
-            <button class="primary" id="send-marketing-campaign" type="button">Send Campaign</button>
           </div>
-          <div id="marketing-status" class="status"></div>
+          <p class="field-group-title">Step 1</p>
+          <label>Choose audience</label>
+          <p class="micro-copy">Select previous opted-in customers from this outlet.</p>
+          <div id="marketing-audience"></div>
+          <p class="field-group-title">Step 2</p>
           <label for="marketing-image-file">Campaign Image</label>
+          <p class="micro-copy">Upload the image you want to send in the morning campaign.</p>
           <div class="image-tools">
             <label class="file-label" for="marketing-image-file">Upload Campaign Image</label>
             <input id="marketing-image-file" type="file" accept="image/*" />
@@ -1746,7 +1751,12 @@ function renderAdminMenuPage() {
           <input id="marketing-image-url" type="text" placeholder="Upload an image or paste an existing public image URL" />
           <label for="marketing-caption">Caption</label>
           <textarea id="marketing-caption" style="min-height: 88px;"></textarea>
-          <div id="marketing-audience"></div>
+          <p class="field-group-title">Step 3</p>
+          <label>Send message</label>
+          <p class="micro-copy">Review the image and caption, then send this campaign to the selected audience.</p>
+          <div class="actions">
+            <button class="primary" id="send-marketing-campaign" type="button">Send Campaign</button>
+          </div>
           <div id="marketing-campaigns"></div>
         </section>
       </div>
