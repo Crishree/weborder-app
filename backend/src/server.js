@@ -1848,6 +1848,24 @@ function renderAdminMenuPage() {
         </section>
 
         <section class="panel">
+          <h2>Petpooja Connections</h2>
+          <p class="hint">Create reusable Petpooja credentials once, then assign them to brands or outlets. The only Petpooja-related Render secret you still need is the platform encryption key.</p>
+          <div class="note-card">
+            <strong>What belongs here</strong>
+            <span class="hint">API base URL, Access Token, App Key, App Secret, and the default Restaurant ID for one Petpooja account. Keep outlet-specific mapping IDs in the Outlets section below.</span>
+          </div>
+          <label for="petpooja-connection-select">Current Connection</label>
+          <select id="petpooja-connection-select"></select>
+          <div class="actions">
+            <button class="secondary" id="add-petpooja-connection" type="button">Add connection</button>
+            <button class="secondary" id="remove-petpooja-connection" type="button">Remove connection</button>
+            <button class="primary" id="save-petpooja-connections" type="button">Save connections</button>
+          </div>
+          <div id="petpooja-connection-status" class="status"></div>
+          <div id="petpooja-connection-form" class="outlet-grid"></div>
+        </section>
+
+        <section class="panel">
           <h2>Outlets</h2>
           <p class="hint">Switch the active outlet context and manage outlet-level configuration here. Menu, order, and payment views below will follow the selected outlet.</p>
           <label for="outlet-select">Current Outlet</label>
@@ -1862,14 +1880,14 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Petpooja Integration</h2>
-          <p class="hint">Set up the exact credentials and outlet mappings needed for live Petpooja menu sync. This panel shows what the admin must fill, what must be configured in Render, and how the sync workflow works.</p>
+          <p class="hint">Set up reusable Petpooja account credentials once, assign them to the correct brand or outlet, then sync menu data for the selected outlet.</p>
           <div class="note-card">
             <strong>What the admin needs to do</strong>
-            <span class="hint">Fill the outlet mapping fields in the Outlets section below, confirm the Petpooja credentials are present in Render environment variables, then click <code>Pull From Petpooja</code> in the Menu Items section for the selected outlet.</span>
+            <span class="hint">Create a Petpooja connection, assign it to the right brand or outlet, fill the outlet mapping fields in the Outlets section below, then click <code>Pull From Petpooja</code> in the Menu Items section for the selected outlet.</span>
           </div>
           <div class="note-card">
-            <strong>What we need from Petpooja</strong>
-            <span class="hint">Access token, App Key, App Secret, Restaurant ID, and the exact outlet mapping ID used by Petpooja for this outlet. Once those are available, the backend can fetch categories, item names, prices, and availability status for that outlet.</span>
+            <strong>What still lives in Render</strong>
+            <span class="hint"><code>APP_ENCRYPTION_KEY</code> only. The product stores customer-specific Petpooja credentials encrypted at rest, so you do not need to edit Render env vars for each brand.</span>
           </div>
           <div id="petpooja-config-status" class="status"></div>
           <div id="petpooja-config-card" class="preview"></div>
@@ -2010,6 +2028,9 @@ function renderAdminMenuPage() {
       const outletStatusBox = document.getElementById('outlet-status');
       const petpoojaConfigStatusBox = document.getElementById('petpooja-config-status');
       const petpoojaConfigCard = document.getElementById('petpooja-config-card');
+      const petpoojaConnectionStatusBox = document.getElementById('petpooja-connection-status');
+      const petpoojaConnectionSelect = document.getElementById('petpooja-connection-select');
+      const petpoojaConnectionForm = document.getElementById('petpooja-connection-form');
       const brandSelect = document.getElementById('brand-select');
       const brandForm = document.getElementById('brand-form');
       const outletSelect = document.getElementById('outlet-select');
@@ -2035,9 +2056,13 @@ function renderAdminMenuPage() {
       const addBrandButton = document.getElementById('add-brand');
       const removeBrandButton = document.getElementById('remove-brand');
       const saveBrandsButton = document.getElementById('save-brands');
+      const addPetpoojaConnectionButton = document.getElementById('add-petpooja-connection');
+      const removePetpoojaConnectionButton = document.getElementById('remove-petpooja-connection');
+      const savePetpoojaConnectionsButton = document.getElementById('save-petpooja-connections');
       const addOutletButton = document.getElementById('add-outlet');
       const saveOutletsButton = document.getElementById('save-outlets');
       let brandState = [];
+      let petpoojaConnectionState = [];
       let outletState = [];
       let marketingAudienceState = [];
       const selectedMarketingRecipients = new Set();
@@ -2059,6 +2084,7 @@ function renderAdminMenuPage() {
         return {
           id: '',
           brandId: brandState[0]?.id || 'neubar',
+          petpoojaConnectionId: '',
           name: '',
           status: 'ACTIVE',
           pickupLabel: '',
@@ -2079,6 +2105,7 @@ function renderAdminMenuPage() {
         return {
           id: '',
           name: '',
+          petpoojaConnectionId: '',
           customerAppBaseUrl: '',
           heroEyebrow: '',
           heroTitle: '',
@@ -2090,6 +2117,19 @@ function renderAdminMenuPage() {
           accentTextColor: '#202020',
           backgroundColor: '#fffaf0',
           surfaceColor: '#ffffff'
+        };
+      }
+
+      function defaultPetpoojaConnection() {
+        return {
+          id: '',
+          name: '',
+          apiBaseUrl: '',
+          accessToken: '',
+          appKey: '',
+          appSecret: '',
+          restaurantId: '',
+          status: 'ACTIVE'
         };
       }
 
@@ -2111,6 +2151,11 @@ function renderAdminMenuPage() {
       function setBrandStatus(message, type) {
         brandStatusBox.textContent = message;
         brandStatusBox.className = 'status show ' + type;
+      }
+
+      function setPetpoojaConnectionStatus(message, type) {
+        petpoojaConnectionStatusBox.textContent = message;
+        petpoojaConnectionStatusBox.className = message ? 'status show ' + type : 'status';
       }
 
       function setOrdersStatus(message, type) {
@@ -2325,11 +2370,23 @@ function renderAdminMenuPage() {
         ).join('');
       }
 
+      function renderPetpoojaConnectionSelector() {
+        petpoojaConnectionSelect.innerHTML = petpoojaConnectionState.map((connection, index) =>
+          '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(connection.name || connection.id || ('Connection ' + (index + 1))) + '</option>'
+        ).join('');
+      }
+
       function renderBrandForm(selectedIndex) {
         const brand = brandState[selectedIndex] || defaultBrand();
+        const connectionOptions = ['<option value="">Use platform fallback</option>'].concat(
+          petpoojaConnectionState.map((connection) =>
+            '<option value="' + escapeHtml(connection.id) + '"' + (brand.petpoojaConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
+          )
+        ).join('');
         brandForm.innerHTML =
           '<div><label>Brand id</label><input type="text" data-brand-field="id" value="' + escapeHtml(brand.id) + '" /></div>' +
           '<div><label>Brand name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" /></div>' +
+          '<div><label>Default Petpooja connection</label><select data-brand-field="petpoojaConnectionId">' + connectionOptions + '</select></div>' +
           '<div><label>Customer app base URL (optional)</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" placeholder="https://brand.pikquik.com" /><div class="micro-copy">Used for WhatsApp, campaign, and payment-success links when this brand owns its own domain.</div></div>' +
           '<div><label>Hero eyebrow</label><input type="text" data-brand-field="heroEyebrow" value="' + escapeHtml(brand.heroEyebrow || '') + '" /></div>' +
           '<div class="full field-group-title">Customer-facing identity</div>' +
@@ -2348,6 +2405,20 @@ function renderAdminMenuPage() {
           '<div><label>Surface color</label><input type="text" data-brand-field="surfaceColor" value="' + escapeHtml(brand.surfaceColor || '#ffffff') + '" /></div>';
       }
 
+      function renderPetpoojaConnectionForm(selectedIndex) {
+        const connection = petpoojaConnectionState[selectedIndex] || defaultPetpoojaConnection();
+        petpoojaConnectionForm.innerHTML =
+          '<div><label>Connection id</label><input type="text" data-petpooja-connection-field="id" value="' + escapeHtml(connection.id) + '" /></div>' +
+          '<div><label>Connection name</label><input type="text" data-petpooja-connection-field="name" value="' + escapeHtml(connection.name) + '" /></div>' +
+          '<div><label>Status</label><select data-petpooja-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
+          '<div><label>Default restaurant id</label><input type="text" data-petpooja-connection-field="restaurantId" value="' + escapeHtml(connection.restaurantId || '') + '" /></div>' +
+          '<div class="full field-group-title">Credentials</div>' +
+          '<div><label>API base URL</label><input type="text" data-petpooja-connection-field="apiBaseUrl" value="' + escapeHtml(connection.apiBaseUrl || '') + '" placeholder="' + escapeHtml(DEFAULT_PETPOOJA_API_BASE_URL) + '" /></div>' +
+          '<div><label>Access token</label><input type="text" data-petpooja-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" /></div>' +
+          '<div><label>App key</label><input type="text" data-petpooja-connection-field="appKey" value="' + escapeHtml(connection.appKey || '') + '" /></div>' +
+          '<div><label>App secret</label><input type="text" data-petpooja-connection-field="appSecret" value="' + escapeHtml(connection.appSecret || '') + '" /></div>';
+      }
+
       function renderOutletSelector() {
         outletSelect.innerHTML = outletState.map((outlet, index) =>
           '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(outlet.name || outlet.id || ('Outlet ' + (index + 1))) + '</option>'
@@ -2359,9 +2430,15 @@ function renderAdminMenuPage() {
         const brandOptions = brandState.map((brand) =>
           '<option value="' + escapeHtml(brand.id) + '"' + (outlet.brandId === brand.id ? ' selected' : '') + '>' + escapeHtml(brand.name || brand.id) + '</option>'
         ).join('');
+        const connectionOptions = ['<option value="">Use brand default</option>'].concat(
+          petpoojaConnectionState.map((connection) =>
+            '<option value="' + escapeHtml(connection.id) + '"' + (outlet.petpoojaConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
+          )
+        ).join('');
         outletForm.innerHTML =
           '<div><label>Outlet id</label><input type="text" data-outlet-field="id" value="' + escapeHtml(outlet.id) + '" /></div>' +
           '<div><label>Brand</label><select data-outlet-field="brandId">' + brandOptions + '</select></div>' +
+          '<div><label>Petpooja connection override</label><select data-outlet-field="petpoojaConnectionId">' + connectionOptions + '</select></div>' +
           '<div><label>Outlet name</label><input type="text" data-outlet-field="name" value="' + escapeHtml(outlet.name) + '" /></div>' +
           '<div><label>Status</label><select data-outlet-field="status"><option value="ACTIVE"' + (outlet.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (outlet.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
           '<div><label>Pickup label</label><input type="text" data-outlet-field="pickupLabel" value="' + escapeHtml(outlet.pickupLabel) + '" /></div>' +
@@ -2398,6 +2475,16 @@ function renderAdminMenuPage() {
         brandSelect.value = String(selectedIndex);
       }
 
+      function syncPetpoojaConnectionStateFromForm() {
+        const selectedIndex = Number(petpoojaConnectionSelect.value || 0);
+        if (!petpoojaConnectionState[selectedIndex]) return;
+        Array.from(petpoojaConnectionForm.querySelectorAll('[data-petpooja-connection-field]')).forEach((field) => {
+          petpoojaConnectionState[selectedIndex][field.dataset.petpoojaConnectionField] = field.value.trim();
+        });
+        renderPetpoojaConnectionSelector();
+        petpoojaConnectionSelect.value = String(selectedIndex);
+      }
+
       function getSelectedOutletId() {
         const selectedIndex = Number(outletSelect.value || 0);
         return outletState[selectedIndex]?.id || outletState[0]?.id || 'showcase_hq';
@@ -2422,33 +2509,34 @@ function renderAdminMenuPage() {
           '<div class="preview-card">' +
             '<strong>Fill these in the admin</strong>' +
             '<ul class="showcase-list">' +
+              '<li>Create a <code>Petpooja connection</code> with API base URL, Access Token, App Key, App Secret, and default Restaurant ID.</li>' +
+              '<li>Assign that connection to the brand or override it at the outlet level.</li>' +
               '<li><code>Petpooja outlet id</code> in the selected outlet</li>' +
-              '<li><code>Petpooja restaurant id</code> in the selected outlet, if it differs per restaurant</li>' +
+              '<li><code>Petpooja restaurant id</code> in the selected outlet only if it differs from the connection default</li>' +
               '<li><code>Petpooja item id</code> on each menu item if you plan to push paid orders back later</li>' +
             '</ul>' +
           '</div>' +
           '<div class="preview-card">' +
-            '<strong>Configure these in Render</strong>' +
+            '<strong>Configure this in Render</strong>' +
             '<ul class="showcase-list">' +
-              '<li><code>PETPOOJA_API_BASE_URL</code></li>' +
-              '<li><code>PETPOOJA_ACCESS_TOKEN</code></li>' +
-              '<li><code>PETPOOJA_APP_KEY</code></li>' +
-              '<li><code>PETPOOJA_APP_SECRET</code></li>' +
-              '<li><code>PETPOOJA_RESTAURANT_ID</code> if it is shared across outlets</li>' +
+              '<li><code>APP_ENCRYPTION_KEY</code></li>' +
             '</ul>' +
           '</div>' +
           '<div class="preview-card">' +
             '<strong>Current outlet mapping</strong>' +
             '<div class="hint">Outlet ID: ' + escapeHtml(config.outletId || 'Not selected') + '</div>' +
+            '<div class="hint">Brand: ' + escapeHtml(config.brandName || 'Missing') + '</div>' +
+            '<div class="hint">Connection: ' + escapeHtml(config.petpoojaConnectionName || config.petpoojaConnectionId || 'Missing') + '</div>' +
             '<div class="hint">Petpooja outlet ID: ' + escapeHtml(config.petpoojaOutletId || 'Missing') + '</div>' +
             '<div class="hint">Restaurant ID: ' + escapeHtml(config.restaurantId || 'Missing') + '</div>' +
           '</div>' +
           '<div class="preview-card">' +
-            '<strong>Global credential state</strong>' +
+            '<strong>Assigned credential state</strong>' +
             '<div class="hint">API base URL: ' + escapeHtml(config.apiBaseUrl || DEFAULT_PETPOOJA_API_BASE_URL) + '</div>' +
             '<div class="hint">Access token configured: ' + (config.auth?.accessTokenConfigured ? 'Yes' : 'No') + '</div>' +
             '<div class="hint">App key configured: ' + (config.auth?.appKeyConfigured ? 'Yes' : 'No') + '</div>' +
             '<div class="hint">App secret configured: ' + (config.auth?.appSecretConfigured ? 'Yes' : 'No') + '</div>' +
+            '<div class="hint">Encryption key configured: ' + (config.auth?.encryptionKeyConfigured ? 'Yes' : 'No') + '</div>' +
           '</div>' +
           '<div class="preview-card">' +
             '<strong>Missing before live menu sync</strong>' +
@@ -2475,7 +2563,7 @@ function renderAdminMenuPage() {
         if (data.config?.configured) {
           setPetpoojaConfigStatus('Petpooja credentials and outlet mappings are configured. Live endpoint wiring is the final remaining step.', 'ok');
         } else {
-          setPetpoojaConfigStatus('Petpooja integration is not fully configured yet. Complete the missing fields below and in Render environment variables.', 'error');
+          setPetpoojaConfigStatus('Petpooja integration is not fully configured yet. Complete the missing connection, assignment, mapping, or encryption fields shown below.', 'error');
         }
       }
 
@@ -2485,6 +2573,21 @@ function renderAdminMenuPage() {
         brandState = data.brands || [];
         renderBrandSelector();
         renderBrandForm(0);
+      }
+
+      async function loadPetpoojaConnections() {
+        const res = await fetch('/api/admin/petpooja-connections');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not load Petpooja connections');
+        petpoojaConnectionState = data.connections || [];
+        renderPetpoojaConnectionSelector();
+        renderPetpoojaConnectionForm(0);
+        if (brandState.length) {
+          renderBrandForm(Number(brandSelect.value || 0));
+        }
+        if (outletState.length) {
+          renderOutletForm(Number(outletSelect.value || 0));
+        }
       }
 
       async function loadOutlets() {
@@ -2679,8 +2782,16 @@ function renderAdminMenuPage() {
         renderBrandForm(Number(brandSelect.value || 0));
       });
 
+      petpoojaConnectionSelect.addEventListener('change', () => {
+        renderPetpoojaConnectionForm(Number(petpoojaConnectionSelect.value || 0));
+      });
+
       brandForm.addEventListener('input', () => {
         syncBrandStateFromForm();
+      });
+
+      petpoojaConnectionForm.addEventListener('input', () => {
+        syncPetpoojaConnectionStateFromForm();
       });
 
       brandForm.addEventListener('change', async (event) => {
@@ -2718,6 +2829,40 @@ function renderAdminMenuPage() {
         brandSelect.value = String(brandState.length - 1);
         renderBrandForm(brandState.length - 1);
         setBrandStatus('New brand row added. Fill the details or remove it before saving.', 'ok');
+      });
+
+      addPetpoojaConnectionButton.addEventListener('click', () => {
+        petpoojaConnectionState.push(defaultPetpoojaConnection());
+        renderPetpoojaConnectionSelector();
+        petpoojaConnectionSelect.value = String(petpoojaConnectionState.length - 1);
+        renderPetpoojaConnectionForm(petpoojaConnectionState.length - 1);
+        setPetpoojaConnectionStatus('New Petpooja connection row added. Fill the details or remove it before saving.', 'ok');
+      });
+
+      removePetpoojaConnectionButton.addEventListener('click', () => {
+        const selectedIndex = Number(petpoojaConnectionSelect.value || 0);
+        const selectedConnection = petpoojaConnectionState[selectedIndex];
+        if (!selectedConnection) return;
+        if (petpoojaConnectionState.length <= 1) {
+          setPetpoojaConnectionStatus('At least one connection row is required in the editor.', 'error');
+          return;
+        }
+        if (
+          selectedConnection.id &&
+          (brandState.some((brand) => brand.petpoojaConnectionId === selectedConnection.id) ||
+           outletState.some((outlet) => outlet.petpoojaConnectionId === selectedConnection.id))
+        ) {
+          setPetpoojaConnectionStatus('Reassign brands or outlets before removing this connection.', 'error');
+          return;
+        }
+        petpoojaConnectionState.splice(selectedIndex, 1);
+        renderPetpoojaConnectionSelector();
+        const nextIndex = Math.max(0, Math.min(selectedIndex, petpoojaConnectionState.length - 1));
+        petpoojaConnectionSelect.value = String(nextIndex);
+        renderPetpoojaConnectionForm(nextIndex);
+        renderBrandForm(Number(brandSelect.value || 0));
+        renderOutletForm(Number(outletSelect.value || 0));
+        setPetpoojaConnectionStatus('Connection removed from the editor. Click Save connections to persist.', 'ok');
       });
 
       removeBrandButton.addEventListener('click', () => {
@@ -2758,6 +2903,28 @@ function renderAdminMenuPage() {
           setBrandStatus('Brand settings saved.', 'ok');
         } catch (error) {
           setBrandStatus(error.message, 'error');
+        }
+      });
+
+      savePetpoojaConnectionsButton.addEventListener('click', async () => {
+        try {
+          syncPetpoojaConnectionStateFromForm();
+          const res = await fetch('/api/admin/petpooja-connections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connections: petpoojaConnectionState })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not save Petpooja connections');
+          petpoojaConnectionState = data.connections || [];
+          renderPetpoojaConnectionSelector();
+          renderPetpoojaConnectionForm(Number(petpoojaConnectionSelect.value || 0));
+          renderBrandForm(Number(brandSelect.value || 0));
+          renderOutletForm(Number(outletSelect.value || 0));
+          await loadPetpoojaConfig();
+          setPetpoojaConnectionStatus('Petpooja connections saved.', 'ok');
+        } catch (error) {
+          setPetpoojaConnectionStatus(error.message, 'error');
         }
       });
 
@@ -3041,6 +3208,7 @@ function renderAdminMenuPage() {
       });
 
       loadBrands()
+        .then(() => loadPetpoojaConnections())
         .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData(), loadPetpoojaConfig()]))
         .catch((error) => setStatus(error.message, 'error'));
     </script>
@@ -3391,10 +3559,12 @@ export function resetStore() {
   persistSessions();
   persistOrders();
   brands = normalizeBrands(defaultBrands);
+  petpoojaConnections = normalizePetpoojaConnections(defaultPetpoojaConnections);
   outlets = normalizeOutlets(defaultOutlets);
   menusByOutlet = normalizeMenusByOutlet(buildDefaultMenusByOutlet());
   uploadedImagesByOutlet = normalizeOutletScopedStore({}, normalizeUploadedImage);
   auditLogsByOutlet = normalizeOutletScopedStore({}, normalizeAuditEntry);
+  persistPetpoojaConnections(petpoojaConnections);
   persistUploadedImages();
   persistAuditLogs();
 }
@@ -3521,6 +3691,10 @@ app.get('/api/admin/brands', (req, res) => {
   res.json({ brands: getBrands() });
 });
 
+app.get('/api/admin/petpooja-connections', (req, res) => {
+  res.json({ connections: getPetpoojaConnections() });
+});
+
 app.post('/api/admin/brands', (req, res) => {
   try {
     const nextBrands = replaceBrands(req.body?.brands);
@@ -3538,6 +3712,15 @@ app.post('/api/admin/brands', (req, res) => {
       });
     });
     res.json({ ok: true, brands: nextBrands });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/petpooja-connections', (req, res) => {
+  try {
+    const nextConnections = replacePetpoojaConnections(req.body?.connections);
+    res.json({ ok: true, connections: nextConnections });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
