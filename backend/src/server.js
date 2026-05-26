@@ -133,6 +133,7 @@ const SAMPLE_CSV_TEXT = [
   'filter_coffee,PP_FILTER_COFFEE,Filter Coffee,"Strong, rich South Indian filter coffee",60,Beverages,https://example.com/filter-coffee.jpg,true',
   'masala_tea,PP_MASALA_TEA,Masala Tea,Spiced chai with milk,40,Beverages,https://example.com/masala-tea.jpg,false'
 ].join('\n');
+const DEFAULT_PETPOOJA_API_BASE_URL = 'https://api.petpooja.com';
 const ORDER_FLOW = {
   SESSION_CREATED: 'SESSION_CREATED',
   WHATSAPP_INITIATED: 'WHATSAPP_INITIATED',
@@ -251,6 +252,7 @@ function normalizeOutlets(rawOutlets) {
       paymentProvider: String(outlet.paymentProvider || 'Razorpay').trim(),
       paymentMode: String(outlet.paymentMode || 'payment_link').trim(),
       petpoojaOutletId: String(outlet.petpoojaOutletId || '').trim(),
+      petpoojaRestaurantId: String(outlet.petpoojaRestaurantId || '').trim(),
       supportPhone: String(outlet.supportPhone || '').trim()
     };
 
@@ -1197,6 +1199,37 @@ export async function pullMenuFromPetpooja(outletId, { persist = true } = {}) {
   };
 }
 
+function getPetpoojaConfigSnapshot(outletId = '') {
+  const outlet = outletId ? getOutlet(outletId) : null;
+  const configuredApiBaseUrl = String(process.env.PETPOOJA_API_BASE_URL || DEFAULT_PETPOOJA_API_BASE_URL).trim();
+  const appKey = String(process.env.PETPOOJA_APP_KEY || '').trim();
+  const appSecret = String(process.env.PETPOOJA_APP_SECRET || '').trim();
+  const accessToken = String(process.env.PETPOOJA_ACCESS_TOKEN || '').trim();
+  const restaurantId = String(outlet?.petpoojaRestaurantId || process.env.PETPOOJA_RESTAURANT_ID || '').trim();
+  const missing = [];
+
+  if (!configuredApiBaseUrl) missing.push('PETPOOJA_API_BASE_URL');
+  if (!appKey) missing.push('PETPOOJA_APP_KEY');
+  if (!appSecret) missing.push('PETPOOJA_APP_SECRET');
+  if (!accessToken) missing.push('PETPOOJA_ACCESS_TOKEN');
+  if (!restaurantId) missing.push('PETPOOJA_RESTAURANT_ID');
+  if (outlet && !String(outlet.petpoojaOutletId || '').trim()) missing.push('petpoojaOutletId');
+
+  return {
+    configured: missing.length === 0,
+    missing,
+    apiBaseUrl: configuredApiBaseUrl,
+    restaurantId,
+    outletId: outlet?.id || '',
+    petpoojaOutletId: outlet?.petpoojaOutletId || '',
+    auth: {
+      appKeyConfigured: Boolean(appKey),
+      appSecretConfigured: Boolean(appSecret),
+      accessTokenConfigured: Boolean(accessToken)
+    }
+  };
+}
+
 function buildPetpoojaOrderPayload(order) {
   return {
     source: 'whatsapp_web_order',
@@ -1217,20 +1250,26 @@ function buildPetpoojaOrderPayload(order) {
 const petpoojaProvider = {
   async pushPaidOrder({ order }) {
     const payload = buildPetpoojaOrderPayload(order);
+    const config = getPetpoojaConfigSnapshot(order.outletId);
     console.log('PETPOOJA_PROVIDER_PLACEHOLDER_ORDER', payload);
     return {
-      status: 'PENDING_CONFIGURATION',
+      status: config.configured ? 'PENDING_API_SPEC' : 'PENDING_CONFIGURATION',
       externalOrderId: null,
-      payload
+      payload,
+      config
     };
   },
   async pullMenu({ outletId }) {
     const existingMenu = getMenu({ includeUnavailable: true, outletId });
+    const config = getPetpoojaConfigSnapshot(outletId);
     return {
       menu: existingMenu,
-      source: 'placeholder',
+      source: config.configured ? 'petpooja-configured-placeholder' : 'placeholder',
       syncedAt: new Date().toISOString(),
-      note: 'Replace petpoojaProvider.pullMenu with the live Petpooja menu sync implementation.'
+      note: config.configured
+        ? 'Petpooja credentials are configured. Replace petpoojaProvider.pullMenu with the exact live Petpooja menu endpoint once the API spec is confirmed.'
+        : 'Petpooja menu sync is waiting for configuration. Add API base URL, access token, app key, app secret, restaurant ID, and outlet mapping fields.',
+      config
     };
   }
 };
@@ -1637,6 +1676,17 @@ function renderAdminMenuPage() {
         </section>
 
         <section class="panel">
+          <h2>Petpooja Integration</h2>
+          <p class="hint">Prepare the exact credentials and outlet mappings needed for live Petpooja menu sync and downstream POS order ingestion.</p>
+          <div class="note-card">
+            <strong>What this checks</strong>
+            <span class="hint">Global credentials should come from environment variables. Outlet-specific mapping fields, such as Petpooja outlet ID and restaurant ID, are managed below. Once Petpooja shares the exact V2 workflow details, this configuration will power the live menu pull.</span>
+          </div>
+          <div id="petpooja-config-status" class="status"></div>
+          <div id="petpooja-config-card" class="preview"></div>
+        </section>
+
+        <section class="panel">
           <h2>Menu Items</h2>
           <p class="hint">Use the row editor below. CSV and Excel headers supported: <code>id,petpoojaItemId,name,description,price,category,image,available</code>.</p>
           <div class="actions">
@@ -1769,6 +1819,8 @@ function renderAdminMenuPage() {
       const imageStatusBox = document.getElementById('image-status');
       const brandStatusBox = document.getElementById('brand-status');
       const outletStatusBox = document.getElementById('outlet-status');
+      const petpoojaConfigStatusBox = document.getElementById('petpooja-config-status');
+      const petpoojaConfigCard = document.getElementById('petpooja-config-card');
       const brandSelect = document.getElementById('brand-select');
       const brandForm = document.getElementById('brand-form');
       const outletSelect = document.getElementById('outlet-select');
@@ -2133,6 +2185,7 @@ function renderAdminMenuPage() {
           '<div><label>Payment provider</label><input type="text" data-outlet-field="paymentProvider" value="' + escapeHtml(outlet.paymentProvider) + '" /></div>' +
           '<div><label>Payment mode</label><input type="text" data-outlet-field="paymentMode" value="' + escapeHtml(outlet.paymentMode) + '" /></div>' +
           '<div><label>Petpooja outlet id</label><input type="text" data-outlet-field="petpoojaOutletId" value="' + escapeHtml(outlet.petpoojaOutletId) + '" /></div>' +
+          '<div><label>Petpooja restaurant id</label><input type="text" data-outlet-field="petpoojaRestaurantId" value="' + escapeHtml(outlet.petpoojaRestaurantId || '') + '" /></div>' +
           '<div><label>Support phone</label><input type="text" data-outlet-field="supportPhone" value="' + escapeHtml(outlet.supportPhone) + '" /></div>';
       }
 
@@ -2159,6 +2212,54 @@ function renderAdminMenuPage() {
       function getSelectedOutletId() {
         const selectedIndex = Number(outletSelect.value || 0);
         return outletState[selectedIndex]?.id || outletState[0]?.id || 'showcase_hq';
+      }
+
+      function setPetpoojaConfigStatus(message, kind) {
+        petpoojaConfigStatusBox.textContent = message;
+        petpoojaConfigStatusBox.className = 'status show ' + (kind || 'ok');
+      }
+
+      function renderPetpoojaConfig(config) {
+        if (!config) {
+          petpoojaConfigCard.innerHTML = '<div class="preview-card"><strong>Petpooja configuration unavailable</strong><span class="hint">Choose an outlet and reload the panel.</span></div>';
+          return;
+        }
+
+        const missingList = (config.missing || []).length
+          ? '<ul class="showcase-list">' + config.missing.map((entry) => '<li>' + escapeHtml(entry) + '</li>').join('') + '</ul>'
+          : '<div class="hint">All required configuration fields are present. Live menu sync still needs the exact Petpooja endpoint workflow.</div>';
+
+        petpoojaConfigCard.innerHTML =
+          '<div class="preview-card">' +
+            '<strong>Current outlet mapping</strong>' +
+            '<div class="hint">Outlet ID: ' + escapeHtml(config.outletId || 'Not selected') + '</div>' +
+            '<div class="hint">Petpooja outlet ID: ' + escapeHtml(config.petpoojaOutletId || 'Missing') + '</div>' +
+            '<div class="hint">Restaurant ID: ' + escapeHtml(config.restaurantId || 'Missing') + '</div>' +
+          '</div>' +
+          '<div class="preview-card">' +
+            '<strong>Global credential state</strong>' +
+            '<div class="hint">API base URL: ' + escapeHtml(config.apiBaseUrl || DEFAULT_PETPOOJA_API_BASE_URL) + '</div>' +
+            '<div class="hint">Access token configured: ' + (config.auth?.accessTokenConfigured ? 'Yes' : 'No') + '</div>' +
+            '<div class="hint">App key configured: ' + (config.auth?.appKeyConfigured ? 'Yes' : 'No') + '</div>' +
+            '<div class="hint">App secret configured: ' + (config.auth?.appSecretConfigured ? 'Yes' : 'No') + '</div>' +
+          '</div>' +
+          '<div class="preview-card">' +
+            '<strong>Missing before live menu sync</strong>' +
+            missingList +
+          '</div>';
+      }
+
+      async function loadPetpoojaConfig() {
+        const outletId = getSelectedOutletId();
+        const res = await fetch('/api/admin/petpooja-config?outletId=' + encodeURIComponent(outletId));
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not load Petpooja configuration');
+        renderPetpoojaConfig(data.config);
+        if (data.config?.configured) {
+          setPetpoojaConfigStatus('Petpooja credentials and outlet mappings are configured. Live endpoint wiring is the final remaining step.', 'ok');
+        } else {
+          setPetpoojaConfigStatus('Petpooja integration is not fully configured yet. Complete the missing fields below and in Render environment variables.', 'error');
+        }
       }
 
       async function loadBrands() {
