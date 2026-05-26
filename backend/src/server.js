@@ -1677,10 +1677,14 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Petpooja Integration</h2>
-          <p class="hint">Prepare the exact credentials and outlet mappings needed for live Petpooja menu sync and downstream POS order ingestion.</p>
+          <p class="hint">Set up the exact credentials and outlet mappings needed for live Petpooja menu sync. This panel shows what the admin must fill, what must be configured in Render, and how the sync workflow works.</p>
           <div class="note-card">
-            <strong>What this checks</strong>
-            <span class="hint">Global credentials should come from environment variables. Outlet-specific mapping fields, such as Petpooja outlet ID and restaurant ID, are managed below. Once Petpooja shares the exact V2 workflow details, this configuration will power the live menu pull.</span>
+            <strong>What the admin needs to do</strong>
+            <span class="hint">Fill the outlet mapping fields in the Outlets section below, confirm the Petpooja credentials are present in Render environment variables, then click <code>Pull From Petpooja</code> in the Menu Items section for the selected outlet.</span>
+          </div>
+          <div class="note-card">
+            <strong>What we need from Petpooja</strong>
+            <span class="hint">Access token, App Key, App Secret, Restaurant ID, and the exact outlet mapping ID used by Petpooja for this outlet. Once those are available, the backend can fetch categories, item names, prices, and availability status for that outlet.</span>
           </div>
           <div id="petpooja-config-status" class="status"></div>
           <div id="petpooja-config-card" class="preview"></div>
@@ -2231,6 +2235,24 @@ function renderAdminMenuPage() {
 
         petpoojaConfigCard.innerHTML =
           '<div class="preview-card">' +
+            '<strong>Fill these in the admin</strong>' +
+            '<ul class="showcase-list">' +
+              '<li><code>Petpooja outlet id</code> in the selected outlet</li>' +
+              '<li><code>Petpooja restaurant id</code> in the selected outlet, if it differs per restaurant</li>' +
+              '<li><code>Petpooja item id</code> on each menu item if you plan to push paid orders back later</li>' +
+            '</ul>' +
+          '</div>' +
+          '<div class="preview-card">' +
+            '<strong>Configure these in Render</strong>' +
+            '<ul class="showcase-list">' +
+              '<li><code>PETPOOJA_API_BASE_URL</code></li>' +
+              '<li><code>PETPOOJA_ACCESS_TOKEN</code></li>' +
+              '<li><code>PETPOOJA_APP_KEY</code></li>' +
+              '<li><code>PETPOOJA_APP_SECRET</code></li>' +
+              '<li><code>PETPOOJA_RESTAURANT_ID</code> if it is shared across outlets</li>' +
+            '</ul>' +
+          '</div>' +
+          '<div class="preview-card">' +
             '<strong>Current outlet mapping</strong>' +
             '<div class="hint">Outlet ID: ' + escapeHtml(config.outletId || 'Not selected') + '</div>' +
             '<div class="hint">Petpooja outlet ID: ' + escapeHtml(config.petpoojaOutletId || 'Missing') + '</div>' +
@@ -2246,6 +2268,16 @@ function renderAdminMenuPage() {
           '<div class="preview-card">' +
             '<strong>Missing before live menu sync</strong>' +
             missingList +
+          '</div>' +
+          '<div class="preview-card">' +
+            '<strong>How this works</strong>' +
+            '<ol class="showcase-list">' +
+              '<li>Select the outlet you want to sync.</li>' +
+              '<li>Confirm the required mapping fields and credentials above show as configured.</li>' +
+              '<li>Click <code>Pull From Petpooja</code> in the Menu Items section.</li>' +
+              '<li>The backend calls the Petpooja menu endpoint for that outlet and converts the response into menu rows.</li>' +
+              '<li>Review the imported rows, then click <code>Save Menu</code> if you want to persist them as the live storefront menu.</li>' +
+            '</ol>' +
           '</div>';
       }
 
@@ -2488,7 +2520,7 @@ function renderAdminMenuPage() {
 
       outletSelect.addEventListener('change', () => {
         renderOutletForm(Number(outletSelect.value || 0));
-        Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData()]).catch((error) => setStatus(error.message, 'error'));
+        Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData(), loadPetpoojaConfig()]).catch((error) => setStatus(error.message, 'error'));
       });
 
       outletForm.addEventListener('input', () => {
@@ -2564,6 +2596,7 @@ function renderAdminMenuPage() {
           outletState = data.outlets;
           renderOutletSelector();
           renderOutletForm(Number(outletSelect.value || 0));
+          await loadPetpoojaConfig();
           setOutletStatus('Outlet settings saved.', 'ok');
         } catch (error) {
           setOutletStatus(error.message, 'error');
@@ -2666,7 +2699,7 @@ function renderAdminMenuPage() {
 
       loadButton.addEventListener('click', async () => {
         try {
-          await Promise.all([loadCurrentMenu(), loadOrdersAndPayments()]);
+          await Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadPetpoojaConfig()]);
           setStatus('Loaded the current backend menu.', 'ok');
         } catch (error) {
           setStatus(error.message, 'error');
@@ -2823,7 +2856,7 @@ function renderAdminMenuPage() {
       });
 
       loadBrands()
-        .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData()]))
+        .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData(), loadPetpoojaConfig()]))
         .catch((error) => setStatus(error.message, 'error'));
     </script>
   </body>
@@ -3467,6 +3500,15 @@ app.get('/api/admin/whatsapp-events', (req, res) => {
   try {
     const limit = Number(req.query.limit || 20);
     res.json({ events: listWhatsAppEvents(limit) });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/petpooja-config', (req, res) => {
+  try {
+    const outletId = req.query?.outletId || '';
+    res.json({ ok: true, config: getPetpoojaConfigSnapshot(outletId) });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
