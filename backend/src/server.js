@@ -18,6 +18,7 @@ const __dirname = path.dirname(__filename);
 const MENU_FILE = process.env.MENU_FILE || path.join(__dirname, '..', 'data', 'menu.json');
 const OUTLETS_FILE = process.env.OUTLETS_FILE || path.join(__dirname, '..', 'data', 'outlets.json');
 const BRANDS_FILE = process.env.BRANDS_FILE || path.join(__dirname, '..', 'data', 'brands.json');
+const PETPOOJA_CONNECTIONS_FILE = process.env.PETPOOJA_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'petpooja-connections.json');
 let sessionsFile = process.env.SESSIONS_FILE || path.join(__dirname, '..', 'data', 'sessions.json');
 let ordersFile = process.env.ORDERS_FILE || path.join(__dirname, '..', 'data', 'orders.json');
 let imageManifestFile = process.env.IMAGE_MANIFEST_FILE || path.join(__dirname, '..', 'data', 'uploaded-images.json');
@@ -25,6 +26,7 @@ let auditLogFile = process.env.AUDIT_LOG_FILE || path.join(__dirname, '..', 'dat
 let whatsappEventsFile = process.env.WHATSAPP_EVENTS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-events.json');
 let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-campaigns.json');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
+const APP_ENCRYPTION_KEY = String(process.env.APP_ENCRYPTION_KEY || '').trim();
 
 app.use(cors());
 app.use(express.json({
@@ -43,6 +45,7 @@ const defaultBrands = [
     id: 'showcase',
     name: 'PikQuik Showcase',
     customerAppBaseUrl: process.env.FRONTEND_BASE_URL || '',
+    petpoojaConnectionId: '',
     heroEyebrow: 'Multi-brand pickup commerce',
     heroTitle: 'Order ahead. Pay online. Pick up fast.',
     heroSubtitle: 'Launch branded ordering, payments, and WhatsApp re-engagement from one operating layer.',
@@ -60,6 +63,7 @@ const defaultOutlets = [
   {
     id: 'showcase_hq',
     brandId: 'showcase',
+    petpoojaConnectionId: '',
     name: 'Showcase HQ',
     status: 'ACTIVE',
     pickupLabel: 'Pickup counter',
@@ -74,6 +78,7 @@ const defaultOutlets = [
     supportPhone: '+91-9000000001'
   }
 ];
+const defaultPetpoojaConnections = [];
 
 const defaultMenu = [
   {
@@ -177,6 +182,7 @@ const upload = multer({
 });
 
 let brands = loadBrandsFromDisk();
+let petpoojaConnections = loadPetpoojaConnectionsFromDisk();
 let outlets = loadOutletsFromDisk();
 let menusByOutlet = loadMenusFromDisk();
 let uploadedImagesByOutlet = loadUploadedImagesFromDisk();
@@ -200,6 +206,7 @@ function normalizeBrands(rawBrands) {
       id: String(brand.id || '').trim(),
       name: String(brand.name || '').trim(),
       customerAppBaseUrl: String(brand.customerAppBaseUrl || '').trim().replace(/\/+$/, ''),
+      petpoojaConnectionId: String(brand.petpoojaConnectionId || '').trim(),
       heroEyebrow: String(brand.heroEyebrow || brand.name || '').trim(),
       heroTitle: String(brand.heroTitle || 'Order ahead, pick up faster').trim(),
       heroSubtitle: String(brand.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.').trim(),
@@ -235,6 +242,7 @@ function normalizeOutlets(rawOutlets) {
     const normalizedOutlet = {
       id: String(outlet.id || '').trim(),
       brandId: String(outlet.brandId || defaultBrands[0]?.id || '').trim(),
+      petpoojaConnectionId: String(outlet.petpoojaConnectionId || '').trim(),
       name: String(outlet.name || '').trim(),
       status: String(outlet.status || 'ACTIVE').trim().toUpperCase(),
       pickupLabel: String(outlet.pickupLabel || '').trim(),
@@ -290,6 +298,141 @@ function loadBrandsFromDisk() {
 function persistBrands(nextBrands) {
   mkdirSync(path.dirname(BRANDS_FILE), { recursive: true });
   writeFileSync(BRANDS_FILE, JSON.stringify(nextBrands, null, 2));
+}
+
+function getEncryptionKeyBuffer() {
+  if (!APP_ENCRYPTION_KEY) return null;
+  return crypto.createHash('sha256').update(APP_ENCRYPTION_KEY).digest();
+}
+
+function encryptStoredSecret(value) {
+  const normalizedValue = String(value || '').trim();
+  if (!normalizedValue) return '';
+
+  const key = getEncryptionKeyBuffer();
+  if (!key) {
+    throw new Error('APP_ENCRYPTION_KEY must be configured before saving Petpooja credentials');
+  }
+
+  if (normalizedValue.startsWith('enc::')) return normalizedValue;
+
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(normalizedValue, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return `enc::${iv.toString('base64')}:${tag.toString('base64')}:${encrypted.toString('base64')}`;
+}
+
+function decryptStoredSecret(value) {
+  const normalizedValue = String(value || '').trim();
+  if (!normalizedValue) return '';
+  if (!normalizedValue.startsWith('enc::')) return normalizedValue;
+
+  const key = getEncryptionKeyBuffer();
+  if (!key) {
+    throw new Error('APP_ENCRYPTION_KEY is required to read encrypted Petpooja credentials');
+  }
+
+  const parts = normalizedValue.replace(/^enc::/, '').split(':');
+  if (parts.length !== 3) {
+    throw new Error('Stored Petpooja credential is malformed');
+  }
+
+  const [ivBase64, tagBase64, encryptedBase64] = parts;
+  const iv = Buffer.from(ivBase64, 'base64');
+  const tag = Buffer.from(tagBase64, 'base64');
+  const encrypted = Buffer.from(encryptedBase64, 'base64');
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(tag);
+  const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+  return decrypted.toString('utf8');
+}
+
+function normalizePetpoojaConnection(rawConnection, index = 0) {
+  if (!rawConnection || typeof rawConnection !== 'object') {
+    throw new Error(`Petpooja connection at index ${index} must be an object`);
+  }
+
+  const normalizedConnection = {
+    id: String(rawConnection.id || '').trim(),
+    name: String(rawConnection.name || '').trim(),
+    apiBaseUrl: String(rawConnection.apiBaseUrl || DEFAULT_PETPOOJA_API_BASE_URL).trim().replace(/\/+$/, ''),
+    accessToken: '',
+    appKey: '',
+    appSecret: '',
+    restaurantId: String(rawConnection.restaurantId || '').trim(),
+    status: String(rawConnection.status || 'ACTIVE').trim().toUpperCase(),
+    lastSyncAt: String(rawConnection.lastSyncAt || '').trim(),
+    lastError: String(rawConnection.lastError || '').trim()
+  };
+
+  try {
+    normalizedConnection.accessToken = decryptStoredSecret(rawConnection.accessToken);
+    normalizedConnection.appKey = decryptStoredSecret(rawConnection.appKey);
+    normalizedConnection.appSecret = decryptStoredSecret(rawConnection.appSecret);
+  } catch (error) {
+    normalizedConnection.lastError = error.message;
+  }
+
+  if (!normalizedConnection.id) throw new Error(`Petpooja connection at index ${index} is missing id`);
+  if (!normalizedConnection.name) throw new Error(`Petpooja connection ${normalizedConnection.id} is missing name`);
+  if (!['ACTIVE', 'INACTIVE'].includes(normalizedConnection.status)) {
+    throw new Error(`Petpooja connection ${normalizedConnection.id} has invalid status`);
+  }
+
+  return normalizedConnection;
+}
+
+function normalizePetpoojaConnections(rawConnections) {
+  if (!Array.isArray(rawConnections)) {
+    throw new Error('Petpooja connections must be an array');
+  }
+
+  const seenIds = new Set();
+  return rawConnections.map((connection, index) => {
+    const normalizedConnection = normalizePetpoojaConnection(connection, index);
+    if (seenIds.has(normalizedConnection.id)) {
+      throw new Error(`Duplicate Petpooja connection id: ${normalizedConnection.id}`);
+    }
+    seenIds.add(normalizedConnection.id);
+    return normalizedConnection;
+  });
+}
+
+function serializePetpoojaConnection(connection) {
+  return {
+    id: connection.id,
+    name: connection.name,
+    apiBaseUrl: connection.apiBaseUrl,
+    accessToken: encryptStoredSecret(connection.accessToken),
+    appKey: encryptStoredSecret(connection.appKey),
+    appSecret: encryptStoredSecret(connection.appSecret),
+    restaurantId: connection.restaurantId,
+    status: connection.status,
+    lastSyncAt: connection.lastSyncAt || '',
+    lastError: connection.lastError || ''
+  };
+}
+
+function loadPetpoojaConnectionsFromDisk() {
+  try {
+    const raw = readFileSync(PETPOOJA_CONNECTIONS_FILE, 'utf8');
+    return normalizePetpoojaConnections(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load Petpooja connections file, using defaults instead.', error.message);
+    }
+    persistPetpoojaConnections(defaultPetpoojaConnections);
+    return normalizePetpoojaConnections(defaultPetpoojaConnections);
+  }
+}
+
+function persistPetpoojaConnections(nextConnections) {
+  mkdirSync(path.dirname(PETPOOJA_CONNECTIONS_FILE), { recursive: true });
+  writeFileSync(
+    PETPOOJA_CONNECTIONS_FILE,
+    JSON.stringify(nextConnections.map((connection) => serializePetpoojaConnection(connection)), null, 2)
+  );
 }
 
 function normalizeWhatsAppCampaign(entry, index = 0) {
@@ -728,8 +871,16 @@ export function getBrands() {
   return [...brands];
 }
 
+export function getPetpoojaConnections() {
+  return petpoojaConnections.map((connection) => ({ ...connection }));
+}
+
 function getBrand(brandId) {
   return brands.find((brand) => brand.id === brandId) || null;
+}
+
+function getPetpoojaConnection(connectionId) {
+  return petpoojaConnections.find((connection) => connection.id === connectionId) || null;
 }
 
 function getOutlet(outletId) {
@@ -761,6 +912,21 @@ function getBrandingForOutlet(outletId) {
     outletName: outlet?.name || '',
     pickupLabel: outlet?.pickupLabel || '',
     address: outlet?.address || ''
+  };
+}
+
+function resolvePetpoojaConnectionForOutlet(outletId) {
+  const outlet = getOutlet(outletId);
+  const brand = outlet ? getBrand(outlet.brandId) : null;
+  const connectionId =
+    String(outlet?.petpoojaConnectionId || '').trim() ||
+    String(brand?.petpoojaConnectionId || '').trim();
+
+  return {
+    outlet,
+    brand,
+    connectionId,
+    connection: connectionId ? getPetpoojaConnection(connectionId) : null
   };
 }
 
@@ -801,6 +967,17 @@ export function replaceBrands(nextBrands, { persist = true } = {}) {
     persistBrands(normalizedBrands);
   }
   return normalizedBrands;
+}
+
+export function replacePetpoojaConnections(nextConnections, { persist = true } = {}) {
+  const normalizedConnections = normalizePetpoojaConnections(nextConnections);
+  petpoojaConnections = normalizedConnections;
+
+  if (persist) {
+    persistPetpoojaConnections(normalizedConnections);
+  }
+
+  return normalizedConnections;
 }
 
 export function replaceOutlets(nextOutlets, { persist = true } = {}) {
@@ -1200,19 +1377,22 @@ export async function pullMenuFromPetpooja(outletId, { persist = true } = {}) {
 }
 
 function getPetpoojaConfigSnapshot(outletId = '') {
-  const outlet = outletId ? getOutlet(outletId) : null;
-  const configuredApiBaseUrl = String(process.env.PETPOOJA_API_BASE_URL || DEFAULT_PETPOOJA_API_BASE_URL).trim();
-  const appKey = String(process.env.PETPOOJA_APP_KEY || '').trim();
-  const appSecret = String(process.env.PETPOOJA_APP_SECRET || '').trim();
-  const accessToken = String(process.env.PETPOOJA_ACCESS_TOKEN || '').trim();
-  const restaurantId = String(outlet?.petpoojaRestaurantId || process.env.PETPOOJA_RESTAURANT_ID || '').trim();
+  const { outlet, brand, connectionId, connection } = resolvePetpoojaConnectionForOutlet(outletId);
+  const configuredApiBaseUrl = String(connection?.apiBaseUrl || DEFAULT_PETPOOJA_API_BASE_URL).trim();
+  const appKey = String(connection?.appKey || '').trim();
+  const appSecret = String(connection?.appSecret || '').trim();
+  const accessToken = String(connection?.accessToken || '').trim();
+  const restaurantId = String(outlet?.petpoojaRestaurantId || connection?.restaurantId || '').trim();
   const missing = [];
 
-  if (!configuredApiBaseUrl) missing.push('PETPOOJA_API_BASE_URL');
-  if (!appKey) missing.push('PETPOOJA_APP_KEY');
-  if (!appSecret) missing.push('PETPOOJA_APP_SECRET');
-  if (!accessToken) missing.push('PETPOOJA_ACCESS_TOKEN');
-  if (!restaurantId) missing.push('PETPOOJA_RESTAURANT_ID');
+  if (!APP_ENCRYPTION_KEY) missing.push('APP_ENCRYPTION_KEY');
+  if (!connectionId) missing.push('petpoojaConnectionId');
+  if (connectionId && !connection) missing.push('assigned Petpooja connection');
+  if (!configuredApiBaseUrl) missing.push('Petpooja API base URL');
+  if (!appKey) missing.push('Petpooja app key');
+  if (!appSecret) missing.push('Petpooja app secret');
+  if (!accessToken) missing.push('Petpooja access token');
+  if (!restaurantId) missing.push('Petpooja restaurant ID');
   if (outlet && !String(outlet.petpoojaOutletId || '').trim()) missing.push('petpoojaOutletId');
 
   return {
@@ -1221,11 +1401,16 @@ function getPetpoojaConfigSnapshot(outletId = '') {
     apiBaseUrl: configuredApiBaseUrl,
     restaurantId,
     outletId: outlet?.id || '',
+    brandId: brand?.id || '',
+    brandName: brand?.name || '',
+    petpoojaConnectionId: connectionId,
+    petpoojaConnectionName: connection?.name || '',
     petpoojaOutletId: outlet?.petpoojaOutletId || '',
     auth: {
       appKeyConfigured: Boolean(appKey),
       appSecretConfigured: Boolean(appSecret),
-      accessTokenConfigured: Boolean(accessToken)
+      accessTokenConfigured: Boolean(accessToken),
+      encryptionKeyConfigured: Boolean(APP_ENCRYPTION_KEY)
     }
   };
 }
@@ -1268,7 +1453,7 @@ const petpoojaProvider = {
       syncedAt: new Date().toISOString(),
       note: config.configured
         ? 'Petpooja credentials are configured. Replace petpoojaProvider.pullMenu with the exact live Petpooja menu endpoint once the API spec is confirmed.'
-        : 'Petpooja menu sync is waiting for configuration. Add API base URL, access token, app key, app secret, restaurant ID, and outlet mapping fields.',
+        : 'Petpooja menu sync is waiting for configuration. Add a Petpooja connection, assign it to the brand or outlet, and complete the outlet mapping fields.',
       config
     };
   }
