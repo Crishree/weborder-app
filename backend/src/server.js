@@ -1854,8 +1854,11 @@ function renderAdminMenuPage() {
             <strong>What belongs here</strong>
             <span class="hint">API base URL, Access Token, App Key, App Secret, and the default Restaurant ID for one Petpooja account. Keep outlet-specific mapping IDs in the Outlets section below.</span>
           </div>
-          <label for="petpooja-connection-select">Current Connection</label>
-          <select id="petpooja-connection-select"></select>
+          <div id="petpooja-connection-select-wrap">
+            <label for="petpooja-connection-select">Saved connection</label>
+            <select id="petpooja-connection-select"></select>
+            <p class="micro-copy">Use this only when you manage more than one Petpooja account. The fields below are the actual credentials you fill in.</p>
+          </div>
           <div class="actions">
             <button class="secondary" id="add-petpooja-connection" type="button">Add connection</button>
             <button class="secondary" id="remove-petpooja-connection" type="button">Remove connection</button>
@@ -2029,6 +2032,7 @@ function renderAdminMenuPage() {
       const petpoojaConfigStatusBox = document.getElementById('petpooja-config-status');
       const petpoojaConfigCard = document.getElementById('petpooja-config-card');
       const petpoojaConnectionStatusBox = document.getElementById('petpooja-connection-status');
+      const petpoojaConnectionSelectWrap = document.getElementById('petpooja-connection-select-wrap');
       const petpoojaConnectionSelect = document.getElementById('petpooja-connection-select');
       const petpoojaConnectionForm = document.getElementById('petpooja-connection-form');
       const brandSelect = document.getElementById('brand-select');
@@ -2371,9 +2375,13 @@ function renderAdminMenuPage() {
       }
 
       function renderPetpoojaConnectionSelector() {
+        if (!petpoojaConnectionState.length) {
+          petpoojaConnectionState = [defaultPetpoojaConnection()];
+        }
         petpoojaConnectionSelect.innerHTML = petpoojaConnectionState.map((connection, index) =>
           '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(connection.name || connection.id || ('Connection ' + (index + 1))) + '</option>'
         ).join('');
+        petpoojaConnectionSelectWrap.style.display = petpoojaConnectionState.length > 1 ? 'block' : 'none';
       }
 
       function renderBrandForm(selectedIndex) {
@@ -2579,7 +2587,7 @@ function renderAdminMenuPage() {
         const res = await fetch('/api/admin/petpooja-connections');
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Could not load Petpooja connections');
-        petpoojaConnectionState = data.connections || [];
+        petpoojaConnectionState = (data.connections && data.connections.length) ? data.connections : [defaultPetpoojaConnection()];
         renderPetpoojaConnectionSelector();
         renderPetpoojaConnectionForm(0);
         if (brandState.length) {
