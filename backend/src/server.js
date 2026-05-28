@@ -3173,6 +3173,12 @@ function renderAdminMenuPage() {
         }
       });
 
+      // Render Petpooja credentials immediately so the setup form is visible
+      // even before the async admin data load completes.
+      petpoojaConnectionState = [defaultPetpoojaConnection()];
+      renderPetpoojaConnectionSelector();
+      renderPetpoojaConnectionForm(0);
+
       uploadImageButton.addEventListener('click', async () => {
         try {
           const file = imageFileInput.files[0];
