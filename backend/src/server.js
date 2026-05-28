@@ -2416,17 +2416,20 @@ function renderAdminMenuPage() {
       function renderPetpoojaConnectionForm(selectedIndex) {
         const connection = petpoojaConnectionState[selectedIndex] || defaultPetpoojaConnection();
         petpoojaConnectionForm.innerHTML =
-          '<div class="full"><div class="hint">Fill these fields once for each Petpooja account, then assign that account to a brand or outlet below.</div></div>' +
-          '<div><label>Connection ID</label><input type="text" data-petpooja-connection-field="id" value="' + escapeHtml(connection.id) + '" placeholder="petpooja_primary" /></div>' +
-          '<div><label>Connection name</label><input type="text" data-petpooja-connection-field="name" value="' + escapeHtml(connection.name) + '" placeholder="Neubar Petpooja Account" /></div>' +
+          '<div class="full"><div class="hint">Create one reusable Petpooja account here, save it, then assign it to brands or outlets below before running a menu pull.</div></div>' +
+          '<div class="full field-group-title">Account</div>' +
+          '<div><label>Internal connection ID</label><input type="text" data-petpooja-connection-field="id" value="' + escapeHtml(connection.id) + '" placeholder="petpooja_primary" /></div>' +
+          '<div><label>Display name</label><input type="text" data-petpooja-connection-field="name" value="' + escapeHtml(connection.name) + '" placeholder="Primary Petpooja Account" /></div>' +
           '<div><label>Status</label><select data-petpooja-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
-          '<div><label>Restaurant ID</label><input type="text" data-petpooja-connection-field="restaurantId" value="' + escapeHtml(connection.restaurantId || '') + '" /></div>' +
+          '<div><label>Restaurant ID</label><input type="text" data-petpooja-connection-field="restaurantId" value="' + escapeHtml(connection.restaurantId || '') + '" placeholder="Shared restaurant ID for this Petpooja account" /></div>' +
           '<div class="full field-group-title">Credentials</div>' +
+          '<div class="full micro-copy">These come from Petpooja: access token, app key, app secret, and the base API endpoint from their API docs or Postman workspace.</div>' +
           '<div><label>API base URL</label><input type="text" data-petpooja-connection-field="apiBaseUrl" value="' + escapeHtml(connection.apiBaseUrl || '') + '" placeholder="' + escapeHtml(DEFAULT_PETPOOJA_API_BASE_URL) + '" /></div>' +
-          '<div><label>Access token</label><input type="text" data-petpooja-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" /></div>' +
+          '<div><label>Access token</label><input type="text" data-petpooja-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" placeholder="Paste the refreshed Petpooja access token" /></div>' +
           '<div><label>App key</label><input type="text" data-petpooja-connection-field="appKey" value="' + escapeHtml(connection.appKey || '') + '" /></div>' +
           '<div><label>App secret</label><input type="text" data-petpooja-connection-field="appSecret" value="' + escapeHtml(connection.appSecret || '') + '" /></div>' +
-          '<div class="full micro-copy">Outlet-specific Petpooja mapping IDs still belong in the Outlets section below.</div>';
+          '<div class="full field-group-title">Next step</div>' +
+          '<div class="full micro-copy">After saving this account, go to Outlets and fill the Petpooja outlet ID plus any outlet-level restaurant override. Then use Pull From Petpooja in the menu section.</div>';
       }
 
       function renderOutletSelector() {
