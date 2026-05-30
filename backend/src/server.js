@@ -1882,21 +1882,6 @@ function renderAdminMenuPage() {
         </section>
 
         <section class="panel">
-          <h2>Petpooja Integration</h2>
-          <p class="hint">Set up reusable Petpooja account credentials once, assign them to the correct brand or outlet, then sync menu data for the selected outlet.</p>
-          <div class="note-card">
-            <strong>What the admin needs to do</strong>
-            <span class="hint">Create a Petpooja connection, assign it to the right brand or outlet, fill the outlet mapping fields in the Outlets section below, then click <code>Pull From Petpooja</code> in the Menu Items section for the selected outlet.</span>
-          </div>
-          <div class="note-card">
-            <strong>What still lives in Render</strong>
-            <span class="hint"><code>APP_ENCRYPTION_KEY</code> only. The product stores customer-specific Petpooja credentials encrypted at rest, so you do not need to edit Render env vars for each brand.</span>
-          </div>
-          <div id="petpooja-config-status" class="status"></div>
-          <div id="petpooja-config-card" class="preview"></div>
-        </section>
-
-        <section class="panel">
           <h2>Menu Items</h2>
           <p class="hint">Use the row editor below. CSV and Excel headers supported: <code>id,petpoojaItemId,name,description,price,category,image,available</code>.</p>
           <div class="actions">
@@ -1908,6 +1893,7 @@ function renderAdminMenuPage() {
             <button class="secondary" id="add-item" type="button">Add Menu Item</button>
             <button class="primary" id="save-menu" type="button">Save Menu</button>
           </div>
+          <div class="micro-copy">To pull from Petpooja, first save a Petpooja connection and complete the outlet-level Petpooja mapping fields in the Outlets section.</div>
           <div id="status" class="status"></div>
           <div id="menu-items" class="menu-items"></div>
           <details>
@@ -2029,8 +2015,6 @@ function renderAdminMenuPage() {
       const imageStatusBox = document.getElementById('image-status');
       const brandStatusBox = document.getElementById('brand-status');
       const outletStatusBox = document.getElementById('outlet-status');
-      const petpoojaConfigStatusBox = document.getElementById('petpooja-config-status');
-      const petpoojaConfigCard = document.getElementById('petpooja-config-card');
       const petpoojaConnectionStatusBox = document.getElementById('petpooja-connection-status');
       const petpoojaConnectionSelectWrap = document.getElementById('petpooja-connection-select-wrap');
       const petpoojaConnectionSelect = document.getElementById('petpooja-connection-select');
@@ -2503,83 +2487,6 @@ function renderAdminMenuPage() {
         return outletState[selectedIndex]?.id || outletState[0]?.id || 'showcase_hq';
       }
 
-      function setPetpoojaConfigStatus(message, kind) {
-        petpoojaConfigStatusBox.textContent = message;
-        petpoojaConfigStatusBox.className = 'status show ' + (kind || 'ok');
-      }
-
-      function renderPetpoojaConfig(config) {
-        if (!config) {
-          petpoojaConfigCard.innerHTML = '<div class="preview-card"><strong>Petpooja configuration unavailable</strong><span class="hint">Choose an outlet and reload the panel.</span></div>';
-          return;
-        }
-
-        const missingList = (config.missing || []).length
-          ? '<ul class="showcase-list">' + config.missing.map((entry) => '<li>' + escapeHtml(entry) + '</li>').join('') + '</ul>'
-          : '<div class="hint">All required configuration fields are present. Live menu sync still needs the exact Petpooja endpoint workflow.</div>';
-
-        petpoojaConfigCard.innerHTML =
-          '<div class="preview-card">' +
-            '<strong>Fill these in the admin</strong>' +
-            '<ul class="showcase-list">' +
-              '<li>Create a <code>Petpooja connection</code> with API base URL, Access Token, App Key, App Secret, and default Restaurant ID.</li>' +
-              '<li>Assign that connection to the brand or override it at the outlet level.</li>' +
-              '<li><code>Petpooja outlet id</code> in the selected outlet</li>' +
-              '<li><code>Petpooja restaurant id</code> in the selected outlet only if it differs from the connection default</li>' +
-              '<li><code>Petpooja item id</code> on each menu item if you plan to push paid orders back later</li>' +
-            '</ul>' +
-          '</div>' +
-          '<div class="preview-card">' +
-            '<strong>Configure this in Render</strong>' +
-            '<ul class="showcase-list">' +
-              '<li><code>APP_ENCRYPTION_KEY</code></li>' +
-            '</ul>' +
-          '</div>' +
-          '<div class="preview-card">' +
-            '<strong>Current outlet mapping</strong>' +
-            '<div class="hint">Outlet ID: ' + escapeHtml(config.outletId || 'Not selected') + '</div>' +
-            '<div class="hint">Brand: ' + escapeHtml(config.brandName || 'Missing') + '</div>' +
-            '<div class="hint">Connection: ' + escapeHtml(config.petpoojaConnectionName || config.petpoojaConnectionId || 'Missing') + '</div>' +
-            '<div class="hint">Petpooja outlet ID: ' + escapeHtml(config.petpoojaOutletId || 'Missing') + '</div>' +
-            '<div class="hint">Restaurant ID: ' + escapeHtml(config.restaurantId || 'Missing') + '</div>' +
-          '</div>' +
-          '<div class="preview-card">' +
-            '<strong>Assigned credential state</strong>' +
-            '<div class="hint">API base URL: ' + escapeHtml(config.apiBaseUrl || DEFAULT_PETPOOJA_API_BASE_URL) + '</div>' +
-            '<div class="hint">Access token configured: ' + (config.auth?.accessTokenConfigured ? 'Yes' : 'No') + '</div>' +
-            '<div class="hint">App key configured: ' + (config.auth?.appKeyConfigured ? 'Yes' : 'No') + '</div>' +
-            '<div class="hint">App secret configured: ' + (config.auth?.appSecretConfigured ? 'Yes' : 'No') + '</div>' +
-            '<div class="hint">Encryption key configured: ' + (config.auth?.encryptionKeyConfigured ? 'Yes' : 'No') + '</div>' +
-          '</div>' +
-          '<div class="preview-card">' +
-            '<strong>Missing before live menu sync</strong>' +
-            missingList +
-          '</div>' +
-          '<div class="preview-card">' +
-            '<strong>How this works</strong>' +
-            '<ol class="showcase-list">' +
-              '<li>Select the outlet you want to sync.</li>' +
-              '<li>Confirm the required mapping fields and credentials above show as configured.</li>' +
-              '<li>Click <code>Pull From Petpooja</code> in the Menu Items section.</li>' +
-              '<li>The backend calls the Petpooja menu endpoint for that outlet and converts the response into menu rows.</li>' +
-              '<li>Review the imported rows, then click <code>Save Menu</code> if you want to persist them as the live storefront menu.</li>' +
-            '</ol>' +
-          '</div>';
-      }
-
-      async function loadPetpoojaConfig() {
-        const outletId = getSelectedOutletId();
-        const res = await fetch('/api/admin/petpooja-config?outletId=' + encodeURIComponent(outletId));
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Could not load Petpooja configuration');
-        renderPetpoojaConfig(data.config);
-        if (data.config?.configured) {
-          setPetpoojaConfigStatus('Petpooja credentials and outlet mappings are configured. Live endpoint wiring is the final remaining step.', 'ok');
-        } else {
-          setPetpoojaConfigStatus('Petpooja integration is not fully configured yet. Complete the missing connection, assignment, mapping, or encryption fields shown below.', 'error');
-        }
-      }
-
       async function loadBrands() {
         const res = await fetch('/api/admin/brands');
         const data = await res.json();
@@ -2829,7 +2736,7 @@ function renderAdminMenuPage() {
 
       outletSelect.addEventListener('change', () => {
         renderOutletForm(Number(outletSelect.value || 0));
-        Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData(), loadPetpoojaConfig()]).catch((error) => setStatus(error.message, 'error'));
+        Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData()]).catch((error) => setStatus(error.message, 'error'));
       });
 
       outletForm.addEventListener('input', () => {
@@ -2934,7 +2841,6 @@ function renderAdminMenuPage() {
           renderPetpoojaConnectionForm(Number(petpoojaConnectionSelect.value || 0));
           renderBrandForm(Number(brandSelect.value || 0));
           renderOutletForm(Number(outletSelect.value || 0));
-          await loadPetpoojaConfig();
           setPetpoojaConnectionStatus('Petpooja connections saved.', 'ok');
         } catch (error) {
           setPetpoojaConnectionStatus(error.message, 'error');
@@ -2961,7 +2867,6 @@ function renderAdminMenuPage() {
           outletState = data.outlets;
           renderOutletSelector();
           renderOutletForm(Number(outletSelect.value || 0));
-          await loadPetpoojaConfig();
           setOutletStatus('Outlet settings saved.', 'ok');
         } catch (error) {
           setOutletStatus(error.message, 'error');
@@ -3064,7 +2969,7 @@ function renderAdminMenuPage() {
 
       loadButton.addEventListener('click', async () => {
         try {
-          await Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadPetpoojaConfig()]);
+          await Promise.all([loadCurrentMenu(), loadOrdersAndPayments()]);
           setStatus('Loaded the current backend menu.', 'ok');
         } catch (error) {
           setStatus(error.message, 'error');
@@ -3228,7 +3133,7 @@ function renderAdminMenuPage() {
 
       loadBrands()
         .then(() => loadPetpoojaConnections())
-        .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData(), loadPetpoojaConfig()]))
+        .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData()]))
         .catch((error) => setStatus(error.message, 'error'));
     </script>
   </body>
