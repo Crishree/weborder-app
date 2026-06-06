@@ -1958,13 +1958,15 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Menu Items</h2>
-          <p class="hint">Upload a menu file or edit items here. Excel and CSV only need <code>Item Name</code>, <code>Description</code>, <code>Price</code>, and <code>Category</code>.</p>
+          <p class="hint">Bring in a menu from a file or pull it from Petpooja, then review and save.</p>
           <div class="actions">
-            <label class="file-label" for="menu-file">Choose JSON, CSV, or Excel File</label>
+            <label class="file-label primary" for="menu-file">Upload Menu File</label>
             <input id="menu-file" type="file" accept=".json,.csv,.xlsx,.xls,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
+            <button class="primary" id="pull-petpooja-menu" type="button">Pull From Petpooja</button>
+          </div>
+          <div class="actions">
             <a class="link-btn" href="/api/admin/menu/sample.csv" download="menu-sample.csv">Download Sample CSV</a>
             <button class="secondary" id="load-current" type="button">Reload Current Menu</button>
-            <button class="secondary" id="pull-petpooja-menu" type="button">Pull From Petpooja</button>
             <button class="secondary" id="add-item" type="button">Add Menu Item</button>
             <button class="primary" id="save-menu" type="button">Save Menu</button>
           </div>
