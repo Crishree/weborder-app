@@ -18,7 +18,7 @@ const __dirname = path.dirname(__filename);
 const MENU_FILE = process.env.MENU_FILE || path.join(__dirname, '..', 'data', 'menu.json');
 const OUTLETS_FILE = process.env.OUTLETS_FILE || path.join(__dirname, '..', 'data', 'outlets.json');
 const BRANDS_FILE = process.env.BRANDS_FILE || path.join(__dirname, '..', 'data', 'brands.json');
-const PETPOOJA_CONNECTIONS_FILE = process.env.PETPOOJA_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'petpooja-connections.json');
+let petpoojaConnectionsFile = process.env.PETPOOJA_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'petpooja-connections.json');
 let sessionsFile = process.env.SESSIONS_FILE || path.join(__dirname, '..', 'data', 'sessions.json');
 let ordersFile = process.env.ORDERS_FILE || path.join(__dirname, '..', 'data', 'orders.json');
 let imageManifestFile = process.env.IMAGE_MANIFEST_FILE || path.join(__dirname, '..', 'data', 'uploaded-images.json');
@@ -132,11 +132,11 @@ const defaultMenu = [
     available: true
   }
 ];
-const SAMPLE_CSV_HEADERS = ['id', 'petpoojaItemId', 'name', 'description', 'price', 'category', 'image', 'available'];
+const SAMPLE_CSV_HEADERS = ['Item Name', 'Description', 'Price', 'Category'];
 const SAMPLE_CSV_TEXT = [
   SAMPLE_CSV_HEADERS.join(','),
-  'filter_coffee,PP_FILTER_COFFEE,Filter Coffee,"Strong, rich South Indian filter coffee",60,Beverages,https://example.com/filter-coffee.jpg,true',
-  'masala_tea,PP_MASALA_TEA,Masala Tea,Spiced chai with milk,40,Beverages,https://example.com/masala-tea.jpg,false'
+  'Filter Coffee,"Strong, rich South Indian filter coffee",60,Beverages',
+  'Masala Tea,Spiced chai with milk,40,Beverages'
 ].join('\n');
 const DEFAULT_PETPOOJA_API_BASE_URL = 'https://api.petpooja.com';
 const ORDER_FLOW = {
@@ -416,7 +416,7 @@ function serializePetpoojaConnection(connection) {
 
 function loadPetpoojaConnectionsFromDisk() {
   try {
-    const raw = readFileSync(PETPOOJA_CONNECTIONS_FILE, 'utf8');
+    const raw = readFileSync(petpoojaConnectionsFile, 'utf8');
     return normalizePetpoojaConnections(JSON.parse(raw));
   } catch (error) {
     if (error.code !== 'ENOENT') {
@@ -428,9 +428,9 @@ function loadPetpoojaConnectionsFromDisk() {
 }
 
 function persistPetpoojaConnections(nextConnections) {
-  mkdirSync(path.dirname(PETPOOJA_CONNECTIONS_FILE), { recursive: true });
+  mkdirSync(path.dirname(petpoojaConnectionsFile), { recursive: true });
   writeFileSync(
-    PETPOOJA_CONNECTIONS_FILE,
+    petpoojaConnectionsFile,
     JSON.stringify(nextConnections.map((connection) => serializePetpoojaConnection(connection)), null, 2)
   );
 }
@@ -579,25 +579,38 @@ function normalizeMenu(rawMenu) {
       throw new Error(`Menu item at index ${index} must be an object`);
     }
 
+    const rawName = String(item.name || '').trim();
+    const generatedName = rawName || `Untitled item ${index + 1}`;
+    const generatedIdBase = String(item.id || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || generatedName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '') || `item_${index + 1}`;
+    let generatedId = generatedIdBase;
+    let duplicateCounter = 2;
+    while (seenIds.has(generatedId)) {
+      generatedId = `${generatedIdBase}_${duplicateCounter}`;
+      duplicateCounter += 1;
+    }
+
+    const rawPrice = Number(item.price);
     const normalizedItem = {
-      id: String(item.id || '').trim(),
-      petpoojaItemId: String(item.petpoojaItemId || '').trim(),
-      name: String(item.name || '').trim(),
+      id: generatedId,
+      petpoojaItemId: String(item.petpoojaItemId || '').trim() || `AUTO_${generatedId.toUpperCase()}`,
+      name: generatedName,
       description: String(item.description || '').trim(),
-      price: Number(item.price),
-      category: String(item.category || '').trim(),
+      price: Number.isFinite(rawPrice) && rawPrice >= 0 ? rawPrice : 0,
+      category: String(item.category || '').trim() || 'Uncategorized',
       image: String(item.image || '').trim(),
       available: item.available !== false
     };
 
-    if (!normalizedItem.id) throw new Error(`Menu item at index ${index} is missing id`);
     if (seenIds.has(normalizedItem.id)) throw new Error(`Duplicate menu item id: ${normalizedItem.id}`);
     if (!normalizedItem.name) throw new Error(`Menu item ${normalizedItem.id} is missing name`);
-    if (!normalizedItem.petpoojaItemId) throw new Error(`Menu item ${normalizedItem.id} is missing petpoojaItemId`);
-    if (!normalizedItem.category) throw new Error(`Menu item ${normalizedItem.id} is missing category`);
-    if (!normalizedItem.description) throw new Error(`Menu item ${normalizedItem.id} is missing description`);
-    if (!normalizedItem.image) throw new Error(`Menu item ${normalizedItem.id} is missing image`);
-    if (!Number.isFinite(normalizedItem.price) || normalizedItem.price <= 0) {
+    if (!Number.isFinite(normalizedItem.price) || normalizedItem.price < 0) {
       throw new Error(`Menu item ${normalizedItem.id} has invalid price`);
     }
 
@@ -1080,29 +1093,50 @@ export function parseMenuCsv(csvText) {
   }
 
   const headers = parseCsvRow(lines[0]);
-  const requiredHeaders = ['id', 'petpoojaItemId', 'name', 'description', 'price', 'category', 'image'];
-  const missingHeaders = requiredHeaders.filter((header) => !headers.includes(header));
-  if (missingHeaders.length > 0) {
-    throw new Error(`CSV is missing required columns: ${missingHeaders.join(', ')}`);
-  }
+  const normalizedHeaders = headers.map((header) =>
+    String(header || '')
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+  );
+
+  const getValue = (row, aliases) => {
+    for (const alias of aliases) {
+      const index = normalizedHeaders.indexOf(alias);
+      if (index >= 0) return row[index] ?? '';
+    }
+    return '';
+  };
 
   const csvMenu = lines.slice(1).map((line, lineIndex) => {
     const values = parseCsvRow(line);
-    const row = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? '']));
-    const availableValue = String(row.available || '').trim().toLowerCase();
+    const availableValue = String(getValue(values, ['available', 'is_available']) || '').trim().toLowerCase();
 
-    return {
-      id: row.id,
-      petpoojaItemId: row.petpoojaItemId,
-      name: row.name,
-      description: row.description,
-      price: row.price,
-      category: row.category,
-      image: row.image,
+    const item = {
+      id: getValue(values, ['id', 'item_id']),
+      petpoojaItemId: getValue(values, ['petpoojaitemid', 'petpooja_item_id', 'petpooja_id']),
+      name: getValue(values, ['item_name', 'name']),
+      description: getValue(values, ['description', 'item_description']),
+      price: getValue(values, ['price', 'item_price']),
+      category: getValue(values, ['category', 'category_name']),
+      image: getValue(values, ['image_url', 'image', 'photo', 'photo_url']),
       available: availableValue ? !['false', '0', 'no'].includes(availableValue) : true,
       _lineIndex: lineIndex + 2
     };
-  });
+
+    const hasAnyContent = [item.id, item.petpoojaItemId, item.name, item.description, item.price, item.category, item.image]
+      .some((value) => String(value || '').trim() !== '');
+    if (!hasAnyContent) {
+      return null;
+    }
+
+    return item;
+  }).filter(Boolean);
+
+  if (!csvMenu.length) {
+    throw new Error('CSV must include at least one non-empty menu item row');
+  }
 
   try {
     return normalizeMenu(csvMenu);
@@ -1128,8 +1162,46 @@ export function parseMenuSpreadsheet(base64Content) {
     throw new Error('Spreadsheet must include a header row and at least one menu item');
   }
 
+  const normalizeImportedRow = (row) => {
+    const entries = Object.entries(row).map(([key, value]) => [
+      String(key || '')
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_+|_+$/g, ''),
+      value
+    ]);
+    const rowMap = new Map(entries);
+    const getValue = (...aliases) => {
+      for (const alias of aliases) {
+        if (rowMap.has(alias)) return rowMap.get(alias);
+      }
+      return '';
+    };
+    const availableValue = String(getValue('available', 'is_available') || '').trim().toLowerCase();
+    return {
+      id: getValue('id', 'item_id'),
+      petpoojaItemId: getValue('petpoojaitemid', 'petpooja_item_id', 'petpooja_id'),
+      name: getValue('item_name', 'name'),
+      description: getValue('description', 'item_description'),
+      price: getValue('price', 'item_price'),
+      category: getValue('category', 'category_name'),
+      image: getValue('image_url', 'image', 'photo', 'photo_url'),
+      available: availableValue ? !['false', '0', 'no'].includes(availableValue) : true
+    };
+  };
+
+  const normalizedRows = rows
+    .map(normalizeImportedRow)
+    .filter((row) => [row.id, row.petpoojaItemId, row.name, row.description, row.price, row.category, row.image]
+      .some((value) => String(value || '').trim() !== ''));
+
+  if (!normalizedRows.length) {
+    throw new Error('Spreadsheet must include at least one non-empty menu item row');
+  }
+
   try {
-    return normalizeMenu(rows);
+    return normalizeMenu(normalizedRows);
   } catch (error) {
     throw new Error(`Spreadsheet validation failed: ${error.message}`);
   }
@@ -1849,15 +1921,15 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Petpooja Connections</h2>
-          <p class="hint">Create reusable Petpooja account credentials once, then assign them to brands or outlets when you want to sync menus.</p>
+          <p class="hint">Save each Petpooja account once, then reuse it where needed.</p>
           <div class="note-card">
-            <strong>What belongs here</strong>
-            <span class="hint">API base URL, Access Token, App Key, App Secret, and the default Restaurant ID for one Petpooja account. Keep outlet-specific mapping IDs in the Outlets section below.</span>
+            <strong>Account details</strong>
+            <span class="hint">Keep account credentials here. Outlet-specific IDs live in Outlets.</span>
           </div>
           <div id="petpooja-connection-select-wrap">
             <label for="petpooja-connection-select">Saved Petpooja account</label>
             <select id="petpooja-connection-select"></select>
-            <p class="micro-copy">Use this only when you manage more than one Petpooja account. The fields below are the actual credentials you fill in.</p>
+            <p class="micro-copy">Shown only when more than one account is saved.</p>
           </div>
           <div class="actions">
             <button class="secondary" id="add-petpooja-connection" type="button">Add connection</button>
@@ -1870,9 +1942,12 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Outlets</h2>
-          <p class="hint">Switch the active outlet context and manage outlet-level configuration here. Menu, order, and payment views below will follow the selected outlet.</p>
-          <label for="outlet-select">Current Outlet</label>
-          <select id="outlet-select"></select>
+          <p class="hint">Set the outlet details used for menus, orders, and payments.</p>
+          <div id="outlet-select-wrap">
+            <label for="outlet-select">Current outlet</label>
+            <select id="outlet-select"></select>
+          </div>
+          <div id="outlet-select-empty" class="micro-copy" style="display:none;">Add your first outlet to continue.</div>
           <div class="actions">
             <button class="secondary" id="add-outlet" type="button">Add outlet</button>
             <button class="primary" id="save-outlets" type="button">Save outlets</button>
@@ -1883,7 +1958,7 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Menu Items</h2>
-          <p class="hint">Use the row editor below. CSV and Excel headers supported: <code>id,petpoojaItemId,name,description,price,category,image,available</code>.</p>
+          <p class="hint">Upload a menu file or edit items here. Excel and CSV only need <code>Item Name</code>, <code>Description</code>, <code>Price</code>, and <code>Category</code>.</p>
           <div class="actions">
             <label class="file-label" for="menu-file">Choose JSON, CSV, or Excel File</label>
             <input id="menu-file" type="file" accept=".json,.csv,.xlsx,.xls,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
@@ -1893,7 +1968,7 @@ function renderAdminMenuPage() {
             <button class="secondary" id="add-item" type="button">Add Menu Item</button>
             <button class="primary" id="save-menu" type="button">Save Menu</button>
           </div>
-          <div class="micro-copy">To pull from Petpooja, first save a Petpooja connection and complete the outlet-level Petpooja mapping fields in the Outlets section.</div>
+          <div class="micro-copy">For Petpooja sync, save the account first and finish the outlet mapping.</div>
           <div id="status" class="status"></div>
           <div id="menu-items" class="menu-items"></div>
           <details>
@@ -2021,6 +2096,8 @@ function renderAdminMenuPage() {
       const petpoojaConnectionForm = document.getElementById('petpooja-connection-form');
       const brandSelect = document.getElementById('brand-select');
       const brandForm = document.getElementById('brand-form');
+      const outletSelectWrap = document.getElementById('outlet-select-wrap');
+      const outletSelectEmpty = document.getElementById('outlet-select-empty');
       const outletSelect = document.getElementById('outlet-select');
       const outletForm = document.getElementById('outlet-form');
       const ordersStatusBox = document.getElementById('orders-status');
@@ -2400,26 +2477,36 @@ function renderAdminMenuPage() {
       function renderPetpoojaConnectionForm(selectedIndex) {
         const connection = petpoojaConnectionState[selectedIndex] || defaultPetpoojaConnection();
         petpoojaConnectionForm.innerHTML =
-          '<div class="full"><div class="hint">Create one reusable Petpooja account here, save it, then assign it to brands or outlets below before running a menu pull.</div></div>' +
+          '<div class="full"><div class="hint">Save the account once, then assign it below.</div></div>' +
           '<div class="full field-group-title">Account</div>' +
           '<div><label>Internal connection ID</label><input type="text" data-petpooja-connection-field="id" value="' + escapeHtml(connection.id) + '" placeholder="petpooja_primary" /></div>' +
           '<div><label>Display name</label><input type="text" data-petpooja-connection-field="name" value="' + escapeHtml(connection.name) + '" placeholder="Primary Petpooja Account" /></div>' +
           '<div><label>Status</label><select data-petpooja-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
           '<div><label>Restaurant ID</label><input type="text" data-petpooja-connection-field="restaurantId" value="' + escapeHtml(connection.restaurantId || '') + '" placeholder="Shared restaurant ID for this Petpooja account" /></div>' +
           '<div class="full field-group-title">Credentials</div>' +
-          '<div class="full micro-copy">These come from Petpooja: access token, app key, app secret, and the base API endpoint from their API docs or Postman workspace.</div>' +
+          '<div class="full micro-copy">Paste the values from Petpooja.</div>' +
           '<div><label>API base URL</label><input type="text" data-petpooja-connection-field="apiBaseUrl" value="' + escapeHtml(connection.apiBaseUrl || '') + '" placeholder="' + escapeHtml(DEFAULT_PETPOOJA_API_BASE_URL) + '" /></div>' +
           '<div><label>Access token</label><input type="text" data-petpooja-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" placeholder="Paste the refreshed Petpooja access token" /></div>' +
           '<div><label>App key</label><input type="text" data-petpooja-connection-field="appKey" value="' + escapeHtml(connection.appKey || '') + '" /></div>' +
           '<div><label>App secret</label><input type="text" data-petpooja-connection-field="appSecret" value="' + escapeHtml(connection.appSecret || '') + '" /></div>' +
-          '<div class="full field-group-title">Next step</div>' +
-          '<div class="full micro-copy">After saving this account, go to Outlets and fill the Petpooja outlet ID plus any outlet-level restaurant override. Then use Pull From Petpooja in the menu section.</div>';
+          '<div class="full micro-copy">Then assign the account in Outlets and pull the menu.</div>';
       }
 
       function renderOutletSelector() {
+        if (!outletState.length) {
+          outletSelect.innerHTML = '';
+          outletSelectWrap.style.display = 'none';
+          outletSelectEmpty.style.display = 'block';
+          return;
+        }
         outletSelect.innerHTML = outletState.map((outlet, index) =>
           '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(outlet.name || outlet.id || ('Outlet ' + (index + 1))) + '</option>'
         ).join('');
+        outletSelectWrap.style.display = outletState.length > 1 ? 'block' : 'none';
+        outletSelectEmpty.style.display = 'none';
+        if (outletState.length === 1) {
+          outletSelect.value = '0';
+        }
       }
 
       function renderOutletForm(selectedIndex) {
@@ -3517,12 +3604,15 @@ export function reloadAdminStore() {
   auditLogsByOutlet = loadAuditLogsFromDisk();
 }
 
-export function configureAdminStoreFiles({ imageManifestPath, auditLogPath } = {}) {
+export function configureAdminStoreFiles({ imageManifestPath, auditLogPath, petpoojaConnectionsPath } = {}) {
   if (imageManifestPath) {
     imageManifestFile = imageManifestPath;
   }
   if (auditLogPath) {
     auditLogFile = auditLogPath;
+  }
+  if (petpoojaConnectionsPath) {
+    petpoojaConnectionsFile = petpoojaConnectionsPath;
   }
   reloadAdminStore();
 }
