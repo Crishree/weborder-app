@@ -1849,7 +1849,7 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>Petpooja Connections</h2>
-          <p class="hint">Create reusable Petpooja credentials once, then assign them to brands or outlets. The only Petpooja-related Render secret you still need is the platform encryption key.</p>
+          <p class="hint">Create reusable Petpooja account credentials once, then assign them to brands or outlets when you want to sync menus.</p>
           <div class="note-card">
             <strong>What belongs here</strong>
             <span class="hint">API base URL, Access Token, App Key, App Secret, and the default Restaurant ID for one Petpooja account. Keep outlet-specific mapping IDs in the Outlets section below.</span>
