@@ -2027,19 +2027,18 @@ function renderAdminMenuPage() {
         </section>
 
         <section class="panel">
-          <h2>WhatsApp Test Mode</h2>
-          <p class="hint">Use Meta Cloud API test mode before switching to a live brand-owned WhatsApp number.</p>
+          <h2>WhatsApp Connector</h2>
+          <p class="hint">Monitor live webhook activity, confirm outbound replies, and keep the WhatsApp ordering flow healthy for the selected outlet.</p>
           <div class="preview-card">
-            <strong>Test Checklist</strong>
-            <div>1. Expose this backend on a public HTTPS URL using ngrok or a deployed endpoint.</div>
-            <div>2. In Meta App Dashboard, set the callback URL to <code>/whatsapp/webhook</code>.</div>
-            <div>3. Set <code>WHATSAPP_VERIFY_TOKEN</code> in the backend and use the same value in Meta webhook setup.</div>
-            <div>4. Add your own phone number as a test recipient in Meta Cloud API.</div>
-            <div>5. Send <code>Hi</code> or a location hint such as <code>Bagmane</code> to the Meta test number.</div>
-            <div>6. Confirm the webhook events below show both the inbound message and the outbound menu link reply.</div>
+            <strong>Connector checklist</strong>
+            <div>1. Point your Meta webhook callback to <code>/whatsapp/webhook</code> on this deployed backend.</div>
+            <div>2. Keep <code>WHATSAPP_VERIFY_TOKEN</code>, <code>WHATSAPP_PHONE_NUMBER_ID</code>, and <code>WHATSAPP_ACCESS_TOKEN</code> configured in the backend environment.</div>
+            <div>3. Send a real inbound message to the connected WhatsApp number and confirm the event appears below.</div>
+            <div>4. Verify the outbound menu link or follow-up reply is logged for the same conversation.</div>
+            <div>5. Use the audit log and campaign history below to trace any failed sends or outlet routing issues.</div>
           </div>
           <div class="actions">
-            <button class="secondary" id="refresh-whatsapp-events" type="button">Refresh WhatsApp Events</button>
+            <button class="secondary" id="refresh-whatsapp-events" type="button">Refresh WhatsApp Activity</button>
           </div>
           <div id="whatsapp-events-table"></div>
         </section>
@@ -2374,7 +2373,7 @@ function renderAdminMenuPage() {
 
       function renderWhatsAppEvents(events) {
         if (!events.length) {
-          whatsappEventsTable.innerHTML = '<p class="hint">No WhatsApp webhook events captured yet.</p>';
+          whatsappEventsTable.innerHTML = '<p class="hint">No WhatsApp activity has been captured yet.</p>';
           return;
         }
 
@@ -3104,7 +3103,7 @@ function renderAdminMenuPage() {
       refreshWhatsAppEventsButton.addEventListener('click', async () => {
         try {
           await loadWhatsAppEvents();
-          setStatus('Loaded recent WhatsApp webhook events.', 'ok');
+          setStatus('Loaded recent WhatsApp activity.', 'ok');
         } catch (error) {
           setStatus(error.message, 'error');
         }
