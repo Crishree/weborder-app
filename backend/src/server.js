@@ -2630,14 +2630,12 @@ function renderAdminMenuPage() {
           '<div class="full field-group-title">Connector</div>' +
           '<div><label>Display name</label><input type="text" data-whatsapp-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary WhatsApp Connector" /></div>' +
           '<div><label>Status</label><select data-whatsapp-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
-          '<div><label>Business account ID</label><input type="text" data-whatsapp-connection-field="businessAccountId" value="' + escapeHtml(connection.businessAccountId || '') + '" placeholder="Optional Meta business account id" /></div>' +
           '<div><label>WhatsApp number</label><input type="text" data-whatsapp-connection-field="phoneNumber" value="' + escapeHtml(connection.phoneNumber || '') + '" placeholder="+919900000001" /></div>' +
           '<div class="full field-group-title">Credentials</div>' +
           '<div><label>Phone number ID</label><input type="text" data-whatsapp-connection-field="phoneNumberId" value="' + escapeHtml(connection.phoneNumberId || '') + '" placeholder="Meta phone number id" /></div>' +
-          '<div><label>Graph version</label><input type="text" data-whatsapp-connection-field="graphVersion" value="' + escapeHtml(connection.graphVersion || 'v25.0') + '" placeholder="v25.0" /></div>' +
-          '<div class="full"><label>Verify token</label><input type="text" data-whatsapp-connection-field="verifyToken" value="' + escapeHtml(connection.verifyToken || '') + '" placeholder="Meta webhook verify token" /></div>' +
+          '<div><label>Verify token</label><input type="text" data-whatsapp-connection-field="verifyToken" value="' + escapeHtml(connection.verifyToken || '') + '" placeholder="Meta webhook verify token" /></div>' +
           '<div class="full"><label>Access token</label><input type="text" data-whatsapp-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" placeholder="Paste the Meta Cloud API access token" /></div>' +
-          '<div class="full micro-copy">Saved fields are used first for webhook verification and outbound sends. Blank fields fall back to environment variables.</div>';
+          '<div class="full micro-copy">Graph version stays on the backend default unless you change it in code. Saved fields are used first for webhook verification and outbound sends.</div>';
       }
 
       function renderOutletSelector() {
