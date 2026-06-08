@@ -234,6 +234,8 @@ function normalizeBrands(rawBrands) {
     if (!normalizedBrand.id) throw new Error(`Brand at index ${index} is missing id`);
     if (seenIds.has(normalizedBrand.id)) throw new Error(`Duplicate brand id: ${normalizedBrand.id}`);
     if (!normalizedBrand.name) throw new Error(`Brand ${normalizedBrand.id} is missing name`);
+    if (!normalizedBrand.customerAppBaseUrl) throw new Error(`Brand ${normalizedBrand.id} is missing customer app URL`);
+    if (!normalizedBrand.heroTitle) throw new Error(`Brand ${normalizedBrand.id} is missing tag line`);
 
     seenIds.add(normalizedBrand.id);
     return normalizedBrand;
@@ -2010,11 +2012,7 @@ function renderAdminMenuPage() {
       <div class="grid">
         <section class="panel">
           <h2>Brands</h2>
-          <p class="hint">Manage shared brand identity here. Multiple outlets can point to one brand so they share the same domain, voice, theme, and logo.</p>
-          <div class="note-card">
-            <strong>About customer app base URL</strong>
-            <span class="hint">Use this only when a brand should open on its own customer-facing domain, such as <code>https://brand.example.com</code>. If left blank, links fall back to the outlet override first and then the server-level default domain.</span>
-          </div>
+          <p class="hint">Keep this section simple: brand name, optional logo, tag line, and the app URL used in customer-facing links.</p>
           <label for="brand-select">Current Brand</label>
           <select id="brand-select"></select>
           <div class="actions">
@@ -2391,6 +2389,14 @@ function renderAdminMenuPage() {
           .replace(/'/g, '&#39;');
       }
 
+      function slugifyIdentifier(value) {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '_')
+          .replace(/^_+|_+$/g, '');
+      }
+
       function renderPreview(rawText) {
         preview.innerHTML = '';
         try {
@@ -2578,31 +2584,14 @@ function renderAdminMenuPage() {
 
       function renderBrandForm(selectedIndex) {
         const brand = brandState[selectedIndex] || defaultBrand();
-        const connectionOptions = ['<option value="">Use platform fallback</option>'].concat(
-          petpoojaConnectionState.map((connection) =>
-            '<option value="' + escapeHtml(connection.id) + '"' + (brand.petpoojaConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
-          )
-        ).join('');
         brandForm.innerHTML =
-          '<div><label>Brand id</label><input type="text" data-brand-field="id" value="' + escapeHtml(brand.id) + '" /></div>' +
-          '<div><label>Brand name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" /></div>' +
-          '<div><label>Default Petpooja connection</label><select data-brand-field="petpoojaConnectionId">' + connectionOptions + '</select></div>' +
-          '<div><label>Customer app base URL (optional)</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" placeholder="https://brand.pikquik.com" /><div class="micro-copy">Used for WhatsApp, campaign, and payment-success links when this brand owns its own domain.</div></div>' +
-          '<div><label>Hero eyebrow</label><input type="text" data-brand-field="heroEyebrow" value="' + escapeHtml(brand.heroEyebrow || '') + '" /></div>' +
-          '<div class="full field-group-title">Customer-facing identity</div>' +
-          '<div><label>Hero title</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" /></div>' +
-          '<div class="full"><label>Hero subtitle</label><textarea class="field-textarea" data-brand-field="heroSubtitle">' + escapeHtml(brand.heroSubtitle || '') + '</textarea></div>' +
-          '<div><label>Logo text</label><input type="text" data-brand-field="logoText" value="' + escapeHtml(brand.logoText || '') + '" /></div>' +
-          '<div class="full"><label>Brand logo</label><div class="image-tools"><label class="file-label" for="brand-logo-file">Upload logo</label><input id="brand-logo-file" type="file" accept="image/*" data-brand-logo-file="true" /></div>' +
+          '<div><label>Brand name</label><input type="text" data-brand-field="name" value="' + escapeHtml(brand.name) + '" placeholder="PikQuik" /></div>' +
+          '<div><label>Tag line</label><input type="text" data-brand-field="heroTitle" value="' + escapeHtml(brand.heroTitle || '') + '" placeholder="Order ahead. Pay online. Pick up fast." /></div>' +
+          '<div class="full"><label>App URL</label><input type="text" data-brand-field="customerAppBaseUrl" value="' + escapeHtml(brand.customerAppBaseUrl || '') + '" placeholder="https://brand.pikquik.com" /><div class="micro-copy">Required. Used for customer links shared by WhatsApp, campaigns, and payment success flows.</div></div>' +
+          '<div class="full"><label>Logo (optional)</label><div class="image-tools"><label class="file-label" for="brand-logo-file">Upload logo</label><input id="brand-logo-file" type="file" accept="image/*" data-brand-logo-file="true" /></div>' +
           '<input type="text" data-brand-field="logoUrl" value="' + escapeHtml(brand.logoUrl || '') + '" placeholder="Logo will be uploaded and linked automatically" readonly />' +
           (brand.logoUrl ? '<div style="margin-top:8px;"><img class="image-preview" src="' + escapeHtml(brand.logoUrl) + '" alt="' + escapeHtml(brand.name || 'Brand logo') + '" style="max-width:180px; max-height:56px; width:auto; height:auto; object-fit:contain;" /></div>' : '') +
-          '</div>' +
-          '<div class="full field-group-title">Visual system</div>' +
-          '<div><label>Primary color</label><input type="text" data-brand-field="primaryColor" value="' + escapeHtml(brand.primaryColor || '#007a63') + '" /></div>' +
-          '<div><label>Accent color</label><input type="text" data-brand-field="accentColor" value="' + escapeHtml(brand.accentColor || '#ffd84d') + '" /></div>' +
-          '<div><label>Accent text color</label><input type="text" data-brand-field="accentTextColor" value="' + escapeHtml(brand.accentTextColor || '#202020') + '" /></div>' +
-          '<div><label>Background color</label><input type="text" data-brand-field="backgroundColor" value="' + escapeHtml(brand.backgroundColor || '#fffaf0') + '" /></div>' +
-          '<div><label>Surface color</label><input type="text" data-brand-field="surfaceColor" value="' + escapeHtml(brand.surfaceColor || '#ffffff') + '" /></div>';
+          '</div>';
       }
 
       function renderPetpoojaConnectionForm(selectedIndex) {
@@ -2701,6 +2690,15 @@ function renderAdminMenuPage() {
         Array.from(brandForm.querySelectorAll('[data-brand-field]')).forEach((field) => {
           brandState[selectedIndex][field.dataset.brandField] = field.value.trim();
         });
+        if (!brandState[selectedIndex].id && brandState[selectedIndex].name) {
+          brandState[selectedIndex].id = slugifyIdentifier(brandState[selectedIndex].name);
+        }
+        if (brandState[selectedIndex].name) {
+          brandState[selectedIndex].logoText = brandState[selectedIndex].name;
+        }
+        if (!brandState[selectedIndex].heroEyebrow) {
+          brandState[selectedIndex].heroEyebrow = brandState[selectedIndex].name || 'Brand';
+        }
         renderBrandSelector();
         brandSelect.value = String(selectedIndex);
       }
@@ -3063,6 +3061,10 @@ function renderAdminMenuPage() {
       saveBrandsButton.addEventListener('click', async () => {
         try {
           syncBrandStateFromForm();
+          const invalidBrand = brandState.find((brand) => !String(brand.name || '').trim() || !String(brand.heroTitle || '').trim() || !String(brand.customerAppBaseUrl || '').trim());
+          if (invalidBrand) {
+            throw new Error('Each brand needs a brand name, tag line, and app URL before saving.');
+          }
           const res = await fetch('/api/admin/brands', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
