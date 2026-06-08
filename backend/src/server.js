@@ -25,7 +25,7 @@ let imageManifestFile = process.env.IMAGE_MANIFEST_FILE || path.join(__dirname, 
 let auditLogFile = process.env.AUDIT_LOG_FILE || path.join(__dirname, '..', 'data', 'audit-logs.json');
 let whatsappEventsFile = process.env.WHATSAPP_EVENTS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-events.json');
 let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-campaigns.json');
-let whatsappConnectionFile = process.env.WHATSAPP_CONNECTION_FILE || path.join(__dirname, '..', 'data', 'whatsapp-connection.json');
+let whatsappConnectionsFile = process.env.WHATSAPP_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-connections.json');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 const APP_ENCRYPTION_KEY = String(process.env.APP_ENCRYPTION_KEY || '').trim();
 
@@ -47,6 +47,7 @@ const defaultBrands = [
     name: 'PikQuik Showcase',
     customerAppBaseUrl: process.env.FRONTEND_BASE_URL || '',
     petpoojaConnectionId: '',
+    whatsappConnectionId: '',
     heroEyebrow: 'Multi-brand pickup commerce',
     heroTitle: 'Order ahead. Pay online. Pick up fast.',
     heroSubtitle: 'Launch branded ordering, payments, and WhatsApp re-engagement from one operating layer.',
@@ -65,6 +66,7 @@ const defaultOutlets = [
     id: 'showcase_hq',
     brandId: 'showcase',
     petpoojaConnectionId: '',
+    whatsappConnectionId: '',
     name: 'Showcase HQ',
     status: 'ACTIVE',
     pickupLabel: 'Pickup counter',
@@ -81,6 +83,7 @@ const defaultOutlets = [
 ];
 const defaultPetpoojaConnections = [];
 const defaultWhatsAppConnection = {
+  id: '',
   name: 'Primary WhatsApp Connector',
   status: 'ACTIVE',
   businessAccountId: '',
@@ -90,6 +93,7 @@ const defaultWhatsAppConnection = {
   accessToken: '',
   graphVersion: 'v25.0'
 };
+const defaultWhatsAppConnections = [];
 
 const defaultMenu = [
   {
@@ -200,7 +204,7 @@ let uploadedImagesByOutlet = loadUploadedImagesFromDisk();
 let auditLogsByOutlet = loadAuditLogsFromDisk();
 let whatsappEvents = loadWhatsAppEventsFromDisk();
 let whatsappCampaigns = loadWhatsAppCampaignsFromDisk();
-let whatsappConnection = loadWhatsAppConnectionFromDisk();
+let whatsappConnections = loadWhatsAppConnectionsFromDisk();
 loadRuntimeStoresFromDisk();
 
 function normalizeBrands(rawBrands) {
@@ -219,6 +223,7 @@ function normalizeBrands(rawBrands) {
       name: String(brand.name || '').trim(),
       customerAppBaseUrl: String(brand.customerAppBaseUrl || '').trim().replace(/\/+$/, ''),
       petpoojaConnectionId: String(brand.petpoojaConnectionId || '').trim(),
+      whatsappConnectionId: String(brand.whatsappConnectionId || '').trim(),
       heroEyebrow: String(brand.heroEyebrow || brand.name || '').trim(),
       heroTitle: String(brand.heroTitle || 'Order ahead, pick up faster').trim(),
       heroSubtitle: String(brand.heroSubtitle || 'Place your order, pay online, and collect it with your pickup code.').trim(),
@@ -257,6 +262,7 @@ function normalizeOutlets(rawOutlets) {
       id: String(outlet.id || '').trim(),
       brandId: String(outlet.brandId || defaultBrands[0]?.id || '').trim(),
       petpoojaConnectionId: String(outlet.petpoojaConnectionId || '').trim(),
+      whatsappConnectionId: String(outlet.whatsappConnectionId || '').trim(),
       name: String(outlet.name || '').trim(),
       status: String(outlet.status || 'ACTIVE').trim().toUpperCase(),
       pickupLabel: String(outlet.pickupLabel || '').trim(),
@@ -449,7 +455,7 @@ function persistPetpoojaConnections(nextConnections) {
   );
 }
 
-function normalizeWhatsAppConnection(rawConnection) {
+function normalizeWhatsAppConnection(rawConnection, index = 0) {
   const source = rawConnection && typeof rawConnection === 'object' ? rawConnection : {};
   let accessToken = '';
   let verifyToken = '';
@@ -463,6 +469,7 @@ function normalizeWhatsAppConnection(rawConnection) {
   }
 
   const normalizedConnection = {
+    id: String(source.id || '').trim() || `whatsapp_connector_${index + 1}`,
     name: String(source.name || defaultWhatsAppConnection.name).trim(),
     status: String(source.status || defaultWhatsAppConnection.status).trim().toUpperCase(),
     businessAccountId: String(source.businessAccountId || '').trim(),
@@ -477,6 +484,9 @@ function normalizeWhatsAppConnection(rawConnection) {
   if (!['ACTIVE', 'INACTIVE'].includes(normalizedConnection.status)) {
     throw new Error('WhatsApp connector status must be ACTIVE or INACTIVE');
   }
+  if (!normalizedConnection.name) {
+    throw new Error(`WhatsApp connector ${normalizedConnection.id} is missing name`);
+  }
 
   if (!normalizedConnection.graphVersion) {
     normalizedConnection.graphVersion = defaultWhatsAppConnection.graphVersion;
@@ -485,8 +495,25 @@ function normalizeWhatsAppConnection(rawConnection) {
   return normalizedConnection;
 }
 
+function normalizeWhatsAppConnections(rawConnections) {
+  if (!Array.isArray(rawConnections)) {
+    throw new Error('WhatsApp connectors must be an array');
+  }
+
+  const seenIds = new Set();
+  return rawConnections.map((connection, index) => {
+    const normalizedConnection = normalizeWhatsAppConnection(connection, index);
+    if (seenIds.has(normalizedConnection.id)) {
+      throw new Error(`Duplicate WhatsApp connector id: ${normalizedConnection.id}`);
+    }
+    seenIds.add(normalizedConnection.id);
+    return normalizedConnection;
+  });
+}
+
 function serializeWhatsAppConnection(connection) {
   return {
+    id: connection.id,
     name: connection.name,
     status: connection.status,
     businessAccountId: connection.businessAccountId,
@@ -499,22 +526,31 @@ function serializeWhatsAppConnection(connection) {
   };
 }
 
-function loadWhatsAppConnectionFromDisk() {
+function loadWhatsAppConnectionsFromDisk() {
   try {
-    const raw = readFileSync(whatsappConnectionFile, 'utf8');
-    return normalizeWhatsAppConnection(JSON.parse(raw));
+    const raw = readFileSync(whatsappConnectionsFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return normalizeWhatsAppConnections(parsed);
+    }
+    if (parsed && typeof parsed === 'object') {
+      const migrated = [normalizeWhatsAppConnection({ id: 'primary_whatsapp_connector', ...parsed }, 0)];
+      persistWhatsAppConnections(migrated);
+      return migrated;
+    }
+    return [];
   } catch (error) {
     if (error.code !== 'ENOENT') {
       console.warn('Failed to load WhatsApp connector file, using defaults instead.', error.message);
     }
-    persistWhatsAppConnection(defaultWhatsAppConnection);
-    return normalizeWhatsAppConnection(defaultWhatsAppConnection);
+    persistWhatsAppConnections(defaultWhatsAppConnections);
+    return normalizeWhatsAppConnections(defaultWhatsAppConnections);
   }
 }
 
-function persistWhatsAppConnection(nextConnection = whatsappConnection) {
-  mkdirSync(path.dirname(whatsappConnectionFile), { recursive: true });
-  writeFileSync(whatsappConnectionFile, JSON.stringify(serializeWhatsAppConnection(nextConnection), null, 2));
+function persistWhatsAppConnections(nextConnections = whatsappConnections) {
+  mkdirSync(path.dirname(whatsappConnectionsFile), { recursive: true });
+  writeFileSync(whatsappConnectionsFile, JSON.stringify(nextConnections.map((connection) => serializeWhatsAppConnection(connection)), null, 2));
 }
 
 function normalizeWhatsAppCampaign(entry, index = 0) {
@@ -970,8 +1006,8 @@ export function getPetpoojaConnections() {
   return petpoojaConnections.map((connection) => ({ ...connection }));
 }
 
-export function getWhatsAppConnection() {
-  return { ...whatsappConnection };
+export function getWhatsAppConnections() {
+  return whatsappConnections.map((connection) => ({ ...connection }));
 }
 
 function getBrand(brandId) {
@@ -980,6 +1016,10 @@ function getBrand(brandId) {
 
 function getPetpoojaConnection(connectionId) {
   return petpoojaConnections.find((connection) => connection.id === connectionId) || null;
+}
+
+function getWhatsAppConnection(connectionId) {
+  return whatsappConnections.find((connection) => connection.id === connectionId) || null;
 }
 
 function getOutlet(outletId) {
@@ -1029,6 +1069,35 @@ function resolvePetpoojaConnectionForOutlet(outletId) {
   };
 }
 
+function resolveWhatsAppConnectionForOutlet(outletId) {
+  const outlet = getOutlet(outletId);
+  const brand = outlet ? getBrand(outlet.brandId) : null;
+  const connectionId =
+    String(outlet?.whatsappConnectionId || '').trim() ||
+    String(brand?.whatsappConnectionId || '').trim();
+
+  return {
+    outlet,
+    brand,
+    connectionId,
+    connection: connectionId ? getWhatsAppConnection(connectionId) : null
+  };
+}
+
+function resolveBrandFromWhatsAppPhoneNumberId(phoneNumberId) {
+  const normalizedPhoneNumberId = String(phoneNumberId || '').trim();
+  if (!normalizedPhoneNumberId) return null;
+
+  const connector = whatsappConnections.find((connection) => String(connection.phoneNumberId || '').trim() === normalizedPhoneNumberId);
+  if (!connector) return null;
+
+  const outletOverride = outlets.find((item) => item.whatsappConnectionId === connector.id) || null;
+  const brand = brands.find((item) => item.whatsappConnectionId === connector.id) ||
+    (outletOverride ? getBrand(outletOverride.brandId) : null);
+
+  return brand ? { brand, connector } : null;
+}
+
 function buildShowcaseBrand(brand) {
   const brandOutlets = outlets.filter((outlet) => outlet.brandId === brand.id);
   const activeOutlets = brandOutlets.filter((outlet) => outlet.status === 'ACTIVE');
@@ -1057,6 +1126,10 @@ function buildShowcaseBrand(brand) {
 export function replaceBrands(nextBrands, { persist = true } = {}) {
   const normalizedBrands = normalizeBrands(nextBrands);
   const brandIds = new Set(normalizedBrands.map((brand) => brand.id));
+  const invalidBrandConnector = normalizedBrands.find((brand) => brand.whatsappConnectionId && !getWhatsAppConnection(brand.whatsappConnectionId));
+  if (invalidBrandConnector) {
+    throw new Error(`Brand ${invalidBrandConnector.id} references missing WhatsApp connector ${invalidBrandConnector.whatsappConnectionId}`);
+  }
   const invalidOutlet = outlets.find((outlet) => !brandIds.has(outlet.brandId));
   if (invalidOutlet) {
     throw new Error(`Cannot save brands because outlet ${invalidOutlet.id} references missing brand ${invalidOutlet.brandId}`);
@@ -1079,19 +1152,23 @@ export function replacePetpoojaConnections(nextConnections, { persist = true } =
   return normalizedConnections;
 }
 
-export function replaceWhatsAppConnection(nextConnection, { persist = true } = {}) {
-  const normalizedConnection = normalizeWhatsAppConnection(nextConnection);
-  whatsappConnection = normalizedConnection;
+export function replaceWhatsAppConnections(nextConnections, { persist = true } = {}) {
+  const normalizedConnections = normalizeWhatsAppConnections(nextConnections);
+  whatsappConnections = normalizedConnections;
 
   if (persist) {
-    persistWhatsAppConnection(normalizedConnection);
+    persistWhatsAppConnections(normalizedConnections);
   }
 
-  return normalizedConnection;
+  return normalizedConnections;
 }
 
 export function replaceOutlets(nextOutlets, { persist = true } = {}) {
   const normalizedOutlets = normalizeOutlets(nextOutlets);
+  const invalidOutletConnector = normalizedOutlets.find((outlet) => outlet.whatsappConnectionId && !getWhatsAppConnection(outlet.whatsappConnectionId));
+  if (invalidOutletConnector) {
+    throw new Error(`Outlet ${invalidOutletConnector.id} references missing WhatsApp connector ${invalidOutletConnector.whatsappConnectionId}`);
+  }
   outlets = normalizedOutlets;
   ensureOutletScopedStores();
   if (persist) {
@@ -1325,9 +1402,12 @@ function haversineDistanceKm(origin, destination) {
   return earthRadiusKm * c;
 }
 
-function resolveOutletFromCustomerContext({ text, latitude, longitude }) {
-  const activeOutlets = outlets.filter((outlet) => outlet.status === 'ACTIVE');
-  const candidates = activeOutlets.length ? activeOutlets : outlets;
+function resolveOutletFromCustomerContext({ text, latitude, longitude, brandId = '' }) {
+  const brandScopedOutlets = brandId
+    ? outlets.filter((outlet) => outlet.brandId === brandId)
+    : outlets;
+  const activeOutlets = brandScopedOutlets.filter((outlet) => outlet.status === 'ACTIVE');
+  const candidates = activeOutlets.length ? activeOutlets : brandScopedOutlets.length ? brandScopedOutlets : outlets;
   const normalizedText = String(text || '').trim().toLowerCase();
 
   if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
@@ -1434,7 +1514,13 @@ function createOrRefreshWhatsAppSession({ customerMobile, outletId, resolutionSo
 
 function extractWhatsAppEvents(payload) {
   return (payload?.entry || []).flatMap((entry) =>
-    (entry?.changes || []).flatMap((change) => change?.value?.messages || [])
+    (entry?.changes || []).flatMap((change) => {
+      const phoneNumberId = change?.value?.metadata?.phone_number_id || '';
+      return (change?.value?.messages || []).map((message) => ({
+        ...message,
+        _metaPhoneNumberId: phoneNumberId
+      }));
+    })
   );
 }
 
@@ -1469,12 +1555,19 @@ export async function handleIncomingWhatsAppMessage(message) {
     return null;
   }
 
+  const incomingPhoneNumberId = String(message?._metaPhoneNumberId || '').trim();
+  const brandResolution = resolveBrandFromWhatsAppPhoneNumberId(incomingPhoneNumberId);
+
   recordWhatsAppEvent({
     direction: 'inbound',
     customerMobile,
     eventType: message?.type || 'message',
     summary: getWhatsAppMessageText(message) || 'Inbound WhatsApp event',
-    payload: message,
+    payload: {
+      ...message,
+      brandId: brandResolution?.brand?.id || '',
+      connectorId: brandResolution?.connector?.id || ''
+    },
     createdAt: new Date().toISOString()
   });
 
@@ -1484,7 +1577,8 @@ export async function handleIncomingWhatsAppMessage(message) {
   const resolution = resolveOutletFromCustomerContext({
     text: messageText,
     latitude,
-    longitude
+    longitude,
+    brandId: brandResolution?.brand?.id || ''
   });
   const outlet = outlets.find((item) => item.id === resolution.outletId) || outlets[0];
   const session = createOrRefreshWhatsAppSession({
@@ -1500,7 +1594,7 @@ export async function handleIncomingWhatsAppMessage(message) {
     replyText = `I mapped you to ${outlet.name} based on "${messageText}".\n\n${buildWhatsAppMenuMessage(outlet, session)}`;
   }
 
-  await sendWhatsAppMessage(customerMobile, replyText);
+  await sendWhatsAppMessage(customerMobile, replyText, { outletId: outlet.id, connectionId: brandResolution?.connector?.id || '' });
   updateSession(session.id, {
     flowState: ORDER_FLOW.MENU_SHARED,
     lastSharedLink: buildOrderLink({ sessionId: session.id, outletId: outlet.id })
@@ -1630,14 +1724,26 @@ const petpoojaProvider = {
 
 let whatsappFetch = globalThis.fetch?.bind(globalThis);
 
-function getWhatsAppConnectionSnapshot() {
-  const configuredConnection = getWhatsAppConnection();
+function buildWhatsAppConnectionSnapshot(connection = null) {
+  const configuredConnection = connection || null;
   return {
     ...configuredConnection,
-    accessToken: configuredConnection.accessToken || String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim(),
-    phoneNumberId: configuredConnection.phoneNumberId || String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim(),
-    verifyToken: configuredConnection.verifyToken || String(process.env.WHATSAPP_VERIFY_TOKEN || '').trim(),
-    graphVersion: configuredConnection.graphVersion || String(process.env.WHATSAPP_GRAPH_VERSION || '').trim() || 'v25.0'
+    accessToken: configuredConnection?.accessToken || String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim(),
+    phoneNumberId: configuredConnection?.phoneNumberId || String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim(),
+    verifyToken: configuredConnection?.verifyToken || String(process.env.WHATSAPP_VERIFY_TOKEN || '').trim(),
+    graphVersion: configuredConnection?.graphVersion || String(process.env.WHATSAPP_GRAPH_VERSION || '').trim() || 'v25.0'
+  };
+}
+
+function getPlatformWhatsAppConnectionSnapshot() {
+  return buildWhatsAppConnectionSnapshot(whatsappConnections[0] || null);
+}
+
+function getWhatsAppConnectionSnapshotForOutlet(outletId) {
+  const resolved = resolveWhatsAppConnectionForOutlet(outletId);
+  return {
+    ...resolved,
+    snapshot: buildWhatsAppConnectionSnapshot(resolved.connection)
   };
 }
 
@@ -1647,11 +1753,10 @@ function normalizeWhatsAppRecipient(value) {
     .replace(/[^\d+]/g, '');
 }
 
-async function sendWhatsAppViaMeta(payload) {
-  const connection = getWhatsAppConnectionSnapshot();
-  const accessToken = connection.accessToken;
-  const phoneNumberId = connection.phoneNumberId;
-  const graphVersion = connection.graphVersion || 'v25.0';
+async function sendWhatsAppViaMeta(payload, connectionSnapshot = getPlatformWhatsAppConnectionSnapshot()) {
+  const accessToken = connectionSnapshot.accessToken;
+  const phoneNumberId = connectionSnapshot.phoneNumberId;
+  const graphVersion = connectionSnapshot.graphVersion || 'v25.0';
 
   if (!accessToken || !phoneNumberId || !whatsappFetch) {
     return null;
@@ -1682,13 +1787,17 @@ async function sendWhatsAppViaMeta(payload) {
 
   return {
     provider: 'meta-cloud-api',
+    phoneNumberId,
     payload,
     response: parsedResponse
   };
 }
 
 const whatsappProvider = {
-  async sendMessage({ to, text }) {
+  async sendMessage({ to, text, outletId = '', connectionId = '' }) {
+    const connectionSnapshot = connectionId
+      ? buildWhatsAppConnectionSnapshot(getWhatsAppConnection(connectionId))
+      : (outletId ? getWhatsAppConnectionSnapshotForOutlet(outletId).snapshot : getPlatformWhatsAppConnectionSnapshot());
     const metaResult = await sendWhatsAppViaMeta({
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -1698,7 +1807,7 @@ const whatsappProvider = {
         preview_url: false,
         body: text
       }
-    });
+    }, connectionSnapshot);
     if (metaResult) {
       console.log('WHATSAPP_PROVIDER_META_MESSAGE', metaResult.response);
     } else {
@@ -1709,12 +1818,15 @@ const whatsappProvider = {
       customerMobile: to,
       eventType: 'message',
       summary: text.split('\n')[0] || 'Outbound WhatsApp message',
-      payload: metaResult || { provider: 'placeholder', to, text },
+      payload: metaResult || { provider: 'placeholder', to, text, outletId, connectionId: connectionId || '' },
       createdAt: new Date().toISOString()
     });
     return { ok: true, provider: metaResult?.provider || 'placeholder' };
   },
-  async sendImageMessage({ to, imageUrl, caption = '' }) {
+  async sendImageMessage({ to, imageUrl, caption = '', outletId = '', connectionId = '' }) {
+    const connectionSnapshot = connectionId
+      ? buildWhatsAppConnectionSnapshot(getWhatsAppConnection(connectionId))
+      : (outletId ? getWhatsAppConnectionSnapshotForOutlet(outletId).snapshot : getPlatformWhatsAppConnectionSnapshot());
     const payload = {
       messaging_product: 'whatsapp',
       recipient_type: 'individual',
@@ -1725,7 +1837,7 @@ const whatsappProvider = {
         caption
       }
     };
-    const metaResult = await sendWhatsAppViaMeta(payload);
+    const metaResult = await sendWhatsAppViaMeta(payload, connectionSnapshot);
     if (metaResult) {
       console.log('WHATSAPP_PROVIDER_META_IMAGE', metaResult.response);
     } else {
@@ -1736,7 +1848,7 @@ const whatsappProvider = {
       customerMobile: to,
       eventType: 'image_message',
       summary: caption || 'Outbound WhatsApp image message',
-      payload: metaResult || { provider: 'placeholder', to, imageUrl, caption },
+      payload: metaResult || { provider: 'placeholder', to, imageUrl, caption, outletId, connectionId: connectionId || '' },
       createdAt: new Date().toISOString()
     });
     return { ok: true, provider: metaResult?.provider || 'placeholder' };
@@ -2133,16 +2245,33 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>WhatsApp Connector</h2>
-          <p class="hint">Save the shared Meta WhatsApp connector here using the same fill-in-box pattern as the Petpooja setup.</p>
+          <p class="hint">Save reusable WhatsApp connectors here, assign one as the brand default, and optionally override it per outlet.</p>
           <div class="note-card">
             <strong>Connector details</strong>
-            <span class="hint">Fill the Meta fields once, save them, then use the activity table below to verify webhook traffic.</span>
+            <span class="hint">Each brand can reuse one shared number across multiple outlets, or an outlet can override it with a dedicated number later.</span>
+          </div>
+          <div id="whatsapp-connection-select-wrap">
+            <label for="whatsapp-connection-select">Saved WhatsApp connector</label>
+            <select id="whatsapp-connection-select"></select>
+            <p class="micro-copy">Shown only when more than one connector is saved.</p>
           </div>
           <div class="actions">
-            <button class="primary" id="save-whatsapp-connection" type="button">Save WhatsApp Connector</button>
+            <button class="secondary" id="add-whatsapp-connection" type="button">Add WhatsApp Connector</button>
+            <button class="secondary" id="remove-whatsapp-connection" type="button">Remove WhatsApp Connector</button>
           </div>
           <div id="whatsapp-connection-status" class="status"></div>
           <div id="whatsapp-connection-form" class="outlet-grid"></div>
+          <div class="actions">
+            <button class="primary" id="save-whatsapp-connection" type="button">Save WhatsApp Connector</button>
+          </div>
+          <div class="note-card">
+            <strong>Assignments</strong>
+            <span class="hint">Use the current Brand and Outlet selected elsewhere on this page, then choose the connector mapping here.</span>
+          </div>
+          <div id="whatsapp-assignment-form" class="outlet-grid"></div>
+          <div class="actions">
+            <button class="secondary" id="save-whatsapp-assignments" type="button">Save WhatsApp Assignments</button>
+          </div>
           <div class="actions">
             <button class="secondary" id="refresh-whatsapp-events" type="button">Refresh WhatsApp Activity</button>
           </div>
@@ -2212,8 +2341,14 @@ function renderAdminMenuPage() {
       const ordersTable = document.getElementById('orders-table');
       const paymentsTable = document.getElementById('payments-table');
       const auditTable = document.getElementById('audit-table');
+      const addWhatsAppConnectionButton = document.getElementById('add-whatsapp-connection');
+      const removeWhatsAppConnectionButton = document.getElementById('remove-whatsapp-connection');
+      const whatsappConnectionSelectWrap = document.getElementById('whatsapp-connection-select-wrap');
+      const whatsappConnectionSelect = document.getElementById('whatsapp-connection-select');
       const whatsappConnectionStatusBox = document.getElementById('whatsapp-connection-status');
       const whatsappConnectionForm = document.getElementById('whatsapp-connection-form');
+      const whatsappAssignmentForm = document.getElementById('whatsapp-assignment-form');
+      const saveWhatsAppAssignmentsButton = document.getElementById('save-whatsapp-assignments');
       const saveWhatsAppConnectionButton = document.getElementById('save-whatsapp-connection');
       const whatsappEventsTable = document.getElementById('whatsapp-events-table');
       const refreshWhatsAppEventsButton = document.getElementById('refresh-whatsapp-events');
@@ -2239,7 +2374,7 @@ function renderAdminMenuPage() {
       let brandState = [];
       let petpoojaConnectionState = [];
       let outletState = [];
-      let whatsappConnectionState = null;
+      let whatsappConnectionState = [];
       let marketingAudienceState = [];
       const selectedMarketingRecipients = new Set();
 
@@ -2261,6 +2396,7 @@ function renderAdminMenuPage() {
           id: '',
           brandId: brandState[0]?.id || 'neubar',
           petpoojaConnectionId: '',
+          whatsappConnectionId: '',
           name: '',
           status: 'ACTIVE',
           pickupLabel: '',
@@ -2282,6 +2418,7 @@ function renderAdminMenuPage() {
           id: '',
           name: '',
           petpoojaConnectionId: '',
+          whatsappConnectionId: '',
           customerAppBaseUrl: '',
           heroEyebrow: '',
           heroTitle: '',
@@ -2311,6 +2448,7 @@ function renderAdminMenuPage() {
 
       function defaultWhatsAppConnection() {
         return {
+          id: '',
           name: 'Primary WhatsApp Connector',
           status: 'ACTIVE',
           businessAccountId: '',
@@ -2612,11 +2750,22 @@ function renderAdminMenuPage() {
           '<div class="full micro-copy">Then assign the account in Outlets and pull the menu.</div>';
       }
 
-      function renderWhatsAppConnectionForm() {
-        const connection = whatsappConnectionState || defaultWhatsAppConnection();
+      function renderWhatsAppConnectionSelector() {
+        if (!whatsappConnectionState.length) {
+          whatsappConnectionState = [defaultWhatsAppConnection()];
+        }
+        whatsappConnectionSelect.innerHTML = whatsappConnectionState.map((connection, index) =>
+          '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(connection.name || connection.id || ('WhatsApp Connector ' + (index + 1))) + '</option>'
+        ).join('');
+        whatsappConnectionSelectWrap.style.display = whatsappConnectionState.length > 1 ? 'block' : 'none';
+      }
+
+      function renderWhatsAppConnectionForm(selectedIndex) {
+        const connection = whatsappConnectionState[selectedIndex] || defaultWhatsAppConnection();
         whatsappConnectionForm.innerHTML =
           '<div class="full"><div class="hint">Save the Meta account once, then monitor events below.</div></div>' +
           '<div class="full field-group-title">Connector</div>' +
+          '<div><label>Internal connector ID</label><input type="text" data-whatsapp-connection-field="id" value="' + escapeHtml(connection.id || '') + '" placeholder="brand_main_whatsapp" /></div>' +
           '<div><label>Display name</label><input type="text" data-whatsapp-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary WhatsApp Connector" /></div>' +
           '<div><label>Status</label><select data-whatsapp-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
           '<div><label>WhatsApp number</label><input type="text" data-whatsapp-connection-field="phoneNumber" value="' + escapeHtml(connection.phoneNumber || '') + '" placeholder="+919900000001" /></div>' +
@@ -2625,6 +2774,27 @@ function renderAdminMenuPage() {
           '<div><label>Verify token</label><input type="text" data-whatsapp-connection-field="verifyToken" value="' + escapeHtml(connection.verifyToken || '') + '" placeholder="Meta webhook verify token" /></div>' +
           '<div class="full"><label>Access token</label><input type="text" data-whatsapp-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" placeholder="Paste the Meta Cloud API access token" /></div>' +
           '<div class="full micro-copy">Graph version stays on the backend default unless you change it in code. Saved fields are used first for webhook verification and outbound sends.</div>';
+      }
+
+      function renderWhatsAppAssignments() {
+        const currentBrand = brandState[Number(brandSelect.value || 0)] || defaultBrand();
+        const currentOutlet = outletState[Number(outletSelect.value || 0)] || defaultOutlet();
+        const connectorOptions = ['<option value="">No connector assigned</option>'].concat(
+          whatsappConnectionState.map((connection) =>
+            '<option value="' + escapeHtml(connection.id || '') + '"' + (currentBrand.whatsappConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
+          )
+        ).join('');
+        const outletConnectorOptions = ['<option value="">Use brand default</option>'].concat(
+          whatsappConnectionState.map((connection) =>
+            '<option value="' + escapeHtml(connection.id || '') + '"' + (currentOutlet.whatsappConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
+          )
+        ).join('');
+        whatsappAssignmentForm.innerHTML =
+          '<div class="full"><div class="hint">Assignments follow the Brand and Outlet currently selected on this page.</div></div>' +
+          '<div><label>Current brand</label><input type="text" value="' + escapeHtml(currentBrand.name || currentBrand.id || 'No brand selected') + '" readonly /></div>' +
+          '<div><label>Brand default connector</label><select data-whatsapp-brand-assignment="whatsappConnectionId">' + connectorOptions + '</select></div>' +
+          '<div><label>Current outlet</label><input type="text" value="' + escapeHtml(currentOutlet.name || currentOutlet.id || 'No outlet selected') + '" readonly /></div>' +
+          '<div><label>Outlet connector override</label><select data-whatsapp-outlet-assignment="whatsappConnectionId">' + outletConnectorOptions + '</select></div>';
       }
 
       function renderOutletSelector() {
@@ -2714,12 +2884,13 @@ function renderAdminMenuPage() {
       }
 
       function syncWhatsAppConnectionStateFromForm() {
-        if (!whatsappConnectionState) {
-          whatsappConnectionState = defaultWhatsAppConnection();
-        }
+        const selectedIndex = Number(whatsappConnectionSelect.value || 0);
+        if (!whatsappConnectionState[selectedIndex]) return;
         Array.from(whatsappConnectionForm.querySelectorAll('[data-whatsapp-connection-field]')).forEach((field) => {
-          whatsappConnectionState[field.dataset.whatsappConnectionField] = field.value.trim();
+          whatsappConnectionState[selectedIndex][field.dataset.whatsappConnectionField] = field.value.trim();
         });
+        renderWhatsAppConnectionSelector();
+        whatsappConnectionSelect.value = String(selectedIndex);
       }
 
       function getSelectedOutletId() {
@@ -2733,6 +2904,7 @@ function renderAdminMenuPage() {
         brandState = data.brands || [];
         renderBrandSelector();
         renderBrandForm(0);
+        renderWhatsAppAssignments();
       }
 
       async function loadPetpoojaConnections() {
@@ -2750,12 +2922,14 @@ function renderAdminMenuPage() {
         }
       }
 
-      async function loadWhatsAppConnection() {
-        const res = await fetch('/api/admin/whatsapp-connection');
+      async function loadWhatsAppConnections() {
+        const res = await fetch('/api/admin/whatsapp-connections');
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Could not load WhatsApp connector');
-        whatsappConnectionState = data.connection || defaultWhatsAppConnection();
-        renderWhatsAppConnectionForm();
+        if (!res.ok) throw new Error(data.error || 'Could not load WhatsApp connectors');
+        whatsappConnectionState = (data.connections && data.connections.length) ? data.connections : [defaultWhatsAppConnection()];
+        renderWhatsAppConnectionSelector();
+        renderWhatsAppConnectionForm(0);
+        renderWhatsAppAssignments();
       }
 
       async function loadOutlets() {
@@ -2764,6 +2938,7 @@ function renderAdminMenuPage() {
         outletState = data.outlets || [];
         renderOutletSelector();
         renderOutletForm(0);
+        renderWhatsAppAssignments();
       }
 
       function createItemCard(item, index) {
@@ -2948,10 +3123,15 @@ function renderAdminMenuPage() {
 
       brandSelect.addEventListener('change', () => {
         renderBrandForm(Number(brandSelect.value || 0));
+        renderWhatsAppAssignments();
       });
 
       petpoojaConnectionSelect.addEventListener('change', () => {
         renderPetpoojaConnectionForm(Number(petpoojaConnectionSelect.value || 0));
+      });
+
+      whatsappConnectionSelect.addEventListener('change', () => {
+        renderWhatsAppConnectionForm(Number(whatsappConnectionSelect.value || 0));
       });
 
       brandForm.addEventListener('input', () => {
@@ -2988,6 +3168,7 @@ function renderAdminMenuPage() {
 
       outletSelect.addEventListener('change', () => {
         renderOutletForm(Number(outletSelect.value || 0));
+        renderWhatsAppAssignments();
         Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData()]).catch((error) => setStatus(error.message, 'error'));
       });
 
@@ -3000,6 +3181,7 @@ function renderAdminMenuPage() {
         renderBrandSelector();
         brandSelect.value = String(brandState.length - 1);
         renderBrandForm(brandState.length - 1);
+        renderWhatsAppAssignments();
         setBrandStatus('New brand row added. Fill the details or remove it before saving.', 'ok');
       });
 
@@ -3055,6 +3237,7 @@ function renderAdminMenuPage() {
         brandSelect.value = String(nextIndex);
         renderBrandForm(nextIndex);
         renderOutletForm(Number(outletSelect.value || 0));
+        renderWhatsAppAssignments();
         setBrandStatus('Brand removed from the editor. Click Save Brands to persist.', 'ok');
       });
 
@@ -3076,6 +3259,7 @@ function renderAdminMenuPage() {
           renderBrandSelector();
           renderBrandForm(Number(brandSelect.value || 0));
           renderOutletForm(Number(outletSelect.value || 0));
+          renderWhatsAppAssignments();
           setBrandStatus('Brand settings saved.', 'ok');
         } catch (error) {
           setBrandStatus(error.message, 'error');
@@ -3106,16 +3290,94 @@ function renderAdminMenuPage() {
       saveWhatsAppConnectionButton.addEventListener('click', async () => {
         try {
           syncWhatsAppConnectionStateFromForm();
-          const res = await fetch('/api/admin/whatsapp-connection', {
+          const res = await fetch('/api/admin/whatsapp-connections', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ connection: whatsappConnectionState })
+            body: JSON.stringify({ connections: whatsappConnectionState })
           });
           const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Could not save WhatsApp connector');
-          whatsappConnectionState = data.connection || defaultWhatsAppConnection();
-          renderWhatsAppConnectionForm();
-          setWhatsAppConnectionStatus('WhatsApp connector saved.', 'ok');
+          if (!res.ok) throw new Error(data.error || 'Could not save WhatsApp connectors');
+          whatsappConnectionState = (data.connections && data.connections.length) ? data.connections : [defaultWhatsAppConnection()];
+          renderWhatsAppConnectionSelector();
+          renderWhatsAppConnectionForm(Number(whatsappConnectionSelect.value || 0));
+          renderWhatsAppAssignments();
+          setWhatsAppConnectionStatus('WhatsApp connectors saved.', 'ok');
+        } catch (error) {
+          setWhatsAppConnectionStatus(error.message, 'error');
+        }
+      });
+
+      addWhatsAppConnectionButton.addEventListener('click', () => {
+        whatsappConnectionState.push(defaultWhatsAppConnection());
+        renderWhatsAppConnectionSelector();
+        whatsappConnectionSelect.value = String(whatsappConnectionState.length - 1);
+        renderWhatsAppConnectionForm(whatsappConnectionState.length - 1);
+        renderWhatsAppAssignments();
+        setWhatsAppConnectionStatus('New WhatsApp connector row added. Fill the details, then click Save WhatsApp Connector.', 'ok');
+      });
+
+      removeWhatsAppConnectionButton.addEventListener('click', () => {
+        const selectedIndex = Number(whatsappConnectionSelect.value || 0);
+        const selectedConnection = whatsappConnectionState[selectedIndex];
+        if (!selectedConnection) return;
+        if (whatsappConnectionState.length <= 1) {
+          setWhatsAppConnectionStatus('At least one connector row is required in the editor.', 'error');
+          return;
+        }
+        if (
+          selectedConnection.id &&
+          (brandState.some((brand) => brand.whatsappConnectionId === selectedConnection.id) ||
+           outletState.some((outlet) => outlet.whatsappConnectionId === selectedConnection.id))
+        ) {
+          setWhatsAppConnectionStatus('Reassign brands or outlets before removing this connector.', 'error');
+          return;
+        }
+        whatsappConnectionState.splice(selectedIndex, 1);
+        renderWhatsAppConnectionSelector();
+        const nextIndex = Math.max(0, Math.min(selectedIndex, whatsappConnectionState.length - 1));
+        whatsappConnectionSelect.value = String(nextIndex);
+        renderWhatsAppConnectionForm(nextIndex);
+        renderWhatsAppAssignments();
+        setWhatsAppConnectionStatus('Connector removed from the editor. Click Save WhatsApp Connector to persist.', 'ok');
+      });
+
+      saveWhatsAppAssignmentsButton.addEventListener('click', async () => {
+        try {
+          const selectedBrandIndex = Number(brandSelect.value || 0);
+          const selectedOutletIndex = Number(outletSelect.value || 0);
+          const brandAssignmentField = whatsappAssignmentForm.querySelector('[data-whatsapp-brand-assignment="whatsappConnectionId"]');
+          const outletAssignmentField = whatsappAssignmentForm.querySelector('[data-whatsapp-outlet-assignment="whatsappConnectionId"]');
+          if (brandState[selectedBrandIndex] && brandAssignmentField) {
+            brandState[selectedBrandIndex].whatsappConnectionId = brandAssignmentField.value.trim();
+          }
+          if (outletState[selectedOutletIndex] && outletAssignmentField) {
+            outletState[selectedOutletIndex].whatsappConnectionId = outletAssignmentField.value.trim();
+          }
+
+          const [brandsRes, outletsRes] = await Promise.all([
+            fetch('/api/admin/brands', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ brands: brandState })
+            }),
+            fetch('/api/admin/outlets', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ outlets: outletState })
+            })
+          ]);
+          const brandsData = await brandsRes.json();
+          const outletsData = await outletsRes.json();
+          if (!brandsRes.ok) throw new Error(brandsData.error || 'Could not save brand WhatsApp assignment');
+          if (!outletsRes.ok) throw new Error(outletsData.error || 'Could not save outlet WhatsApp assignment');
+          brandState = brandsData.brands || [];
+          outletState = outletsData.outlets || [];
+          renderBrandSelector();
+          renderBrandForm(Number(brandSelect.value || 0));
+          renderOutletSelector();
+          renderOutletForm(Number(outletSelect.value || 0));
+          renderWhatsAppAssignments();
+          setWhatsAppConnectionStatus('WhatsApp brand and outlet assignments saved.', 'ok');
         } catch (error) {
           setWhatsAppConnectionStatus(error.message, 'error');
         }
@@ -3126,6 +3388,7 @@ function renderAdminMenuPage() {
         renderOutletSelector();
         outletSelect.value = String(outletState.length - 1);
         renderOutletForm(outletState.length - 1);
+        renderWhatsAppAssignments();
       });
 
       saveOutletsButton.addEventListener('click', async () => {
@@ -3141,6 +3404,7 @@ function renderAdminMenuPage() {
           outletState = data.outlets;
           renderOutletSelector();
           renderOutletForm(Number(outletSelect.value || 0));
+          renderWhatsAppAssignments();
           setOutletStatus('Outlet settings saved.', 'ok');
         } catch (error) {
           setOutletStatus(error.message, 'error');
@@ -3360,8 +3624,10 @@ function renderAdminMenuPage() {
       petpoojaConnectionState = [defaultPetpoojaConnection()];
       renderPetpoojaConnectionSelector();
       renderPetpoojaConnectionForm(0);
-      whatsappConnectionState = defaultWhatsAppConnection();
-      renderWhatsAppConnectionForm();
+      whatsappConnectionState = [defaultWhatsAppConnection()];
+      renderWhatsAppConnectionSelector();
+      renderWhatsAppConnectionForm(0);
+      renderWhatsAppAssignments();
 
       uploadImageButton.addEventListener('click', async () => {
         try {
@@ -3409,7 +3675,7 @@ function renderAdminMenuPage() {
 
       loadBrands()
         .then(() => loadPetpoojaConnections())
-        .then(() => loadWhatsAppConnection())
+        .then(() => loadWhatsAppConnections())
         .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData()]))
         .catch((error) => setStatus(error.message, 'error'));
     </script>
@@ -3470,12 +3736,12 @@ async function pushOrderToPetpooja(order) {
   await syncOrderToPetpooja(order);
 }
 
-async function sendWhatsAppMessage(to, text) {
-  return whatsappProvider.sendMessage({ to, text });
+async function sendWhatsAppMessage(to, text, options = {}) {
+  return whatsappProvider.sendMessage({ to, text, ...options });
 }
 
-async function sendWhatsAppImageMessage(to, imageUrl, caption = '') {
-  return whatsappProvider.sendImageMessage({ to, imageUrl, caption });
+async function sendWhatsAppImageMessage(to, imageUrl, caption = '', options = {}) {
+  return whatsappProvider.sendImageMessage({ to, imageUrl, caption, ...options });
 }
 
 function getSessionOrDefault({ sessionId, customerMobile, outletId }) {
@@ -3578,7 +3844,7 @@ async function finalizePaidOrder(order, paymentUpdate = {}) {
   };
 
   await pushOrderToPetpooja(order);
-  await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order));
+  await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order), { outletId: order.outletId });
   order.flowState = ORDER_FLOW.PICKUP_CODE_SENT;
 
   persistOrders();
@@ -3899,8 +4165,8 @@ app.get('/api/admin/petpooja-connections', (req, res) => {
   res.json({ connections: getPetpoojaConnections() });
 });
 
-app.get('/api/admin/whatsapp-connection', (req, res) => {
-  res.json({ connection: getWhatsAppConnection() });
+app.get('/api/admin/whatsapp-connections', (req, res) => {
+  res.json({ connections: getWhatsAppConnections() });
 });
 
 app.post('/api/admin/brands', (req, res) => {
@@ -3934,24 +4200,26 @@ app.post('/api/admin/petpooja-connections', (req, res) => {
   }
 });
 
-app.post('/api/admin/whatsapp-connection', (req, res) => {
+app.post('/api/admin/whatsapp-connections', (req, res) => {
   try {
-    const nextConnection = replaceWhatsAppConnection(req.body?.connection);
-    logAuditEvent({
-      outletId: null,
-      action: 'WHATSAPP_CONNECTOR_SAVED',
-      entityType: 'whatsapp_connector',
-      entityId: 'primary',
-      summary: `Saved WhatsApp connector ${nextConnection.name}`,
-      actor: 'admin-ui',
-      metadata: {
-        status: nextConnection.status,
-        phoneNumber: nextConnection.phoneNumber,
-        phoneNumberId: nextConnection.phoneNumberId,
-        graphVersion: nextConnection.graphVersion
-      }
+    const nextConnections = replaceWhatsAppConnections(req.body?.connections);
+    nextConnections.forEach((connection) => {
+      logAuditEvent({
+        outletId: null,
+        action: 'WHATSAPP_CONNECTOR_SAVED',
+        entityType: 'whatsapp_connector',
+        entityId: connection.id,
+        summary: `Saved WhatsApp connector ${connection.name}`,
+        actor: 'admin-ui',
+        metadata: {
+          status: connection.status,
+          phoneNumber: connection.phoneNumber,
+          phoneNumberId: connection.phoneNumberId,
+          graphVersion: connection.graphVersion
+        }
+      });
     });
-    res.json({ ok: true, connection: nextConnection });
+    res.json({ ok: true, connections: nextConnections });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -4021,7 +4289,7 @@ app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
 
     for (const recipient of recipients) {
       try {
-        await sendWhatsAppImageMessage(recipient, imageUrl, caption);
+        await sendWhatsAppImageMessage(recipient, imageUrl, caption, { outletId });
         sentCount += 1;
       } catch (error) {
         failedCount += 1;
@@ -4183,7 +4451,7 @@ app.post('/api/admin/orders/:orderId/resend-confirmation', async (req, res) => {
     if (!order) return res.status(404).json({ error: 'Order not found' });
     if (order.paymentStatus !== 'PAID') return res.status(400).json({ error: 'Order is not paid yet' });
 
-    await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order));
+    await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order), { outletId: order.outletId });
     logAuditEvent({
       outletId: order.outletId,
       action: 'ORDER_CONFIRMATION_RESENT',
@@ -4335,8 +4603,9 @@ app.get('/whatsapp/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  const connection = getWhatsAppConnectionSnapshot();
-  if (mode === 'subscribe' && token === connection.verifyToken) {
+  const matchesSavedConnector = whatsappConnections.some((connection) => buildWhatsAppConnectionSnapshot(connection).verifyToken === token);
+  const platformSnapshot = getPlatformWhatsAppConnectionSnapshot();
+  if (mode === 'subscribe' && (matchesSavedConnector || token === platformSnapshot.verifyToken)) {
     return res.status(200).send(challenge);
   }
   return res.sendStatus(403);
