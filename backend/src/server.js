@@ -25,6 +25,7 @@ let imageManifestFile = process.env.IMAGE_MANIFEST_FILE || path.join(__dirname, 
 let auditLogFile = process.env.AUDIT_LOG_FILE || path.join(__dirname, '..', 'data', 'audit-logs.json');
 let whatsappEventsFile = process.env.WHATSAPP_EVENTS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-events.json');
 let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-campaigns.json');
+let whatsappConnectionFile = process.env.WHATSAPP_CONNECTION_FILE || path.join(__dirname, '..', 'data', 'whatsapp-connection.json');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 const APP_ENCRYPTION_KEY = String(process.env.APP_ENCRYPTION_KEY || '').trim();
 
@@ -79,6 +80,16 @@ const defaultOutlets = [
   }
 ];
 const defaultPetpoojaConnections = [];
+const defaultWhatsAppConnection = {
+  name: 'Primary WhatsApp Connector',
+  status: 'ACTIVE',
+  businessAccountId: '',
+  phoneNumber: '',
+  phoneNumberId: '',
+  verifyToken: '',
+  accessToken: '',
+  graphVersion: 'v25.0'
+};
 
 const defaultMenu = [
   {
@@ -189,6 +200,7 @@ let uploadedImagesByOutlet = loadUploadedImagesFromDisk();
 let auditLogsByOutlet = loadAuditLogsFromDisk();
 let whatsappEvents = loadWhatsAppEventsFromDisk();
 let whatsappCampaigns = loadWhatsAppCampaignsFromDisk();
+let whatsappConnection = loadWhatsAppConnectionFromDisk();
 loadRuntimeStoresFromDisk();
 
 function normalizeBrands(rawBrands) {
@@ -433,6 +445,74 @@ function persistPetpoojaConnections(nextConnections) {
     petpoojaConnectionsFile,
     JSON.stringify(nextConnections.map((connection) => serializePetpoojaConnection(connection)), null, 2)
   );
+}
+
+function normalizeWhatsAppConnection(rawConnection) {
+  const source = rawConnection && typeof rawConnection === 'object' ? rawConnection : {};
+  let accessToken = '';
+  let verifyToken = '';
+  let lastError = String(source.lastError || '').trim();
+
+  try {
+    accessToken = decryptStoredSecret(source.accessToken);
+    verifyToken = decryptStoredSecret(source.verifyToken);
+  } catch (error) {
+    lastError = error.message;
+  }
+
+  const normalizedConnection = {
+    name: String(source.name || defaultWhatsAppConnection.name).trim(),
+    status: String(source.status || defaultWhatsAppConnection.status).trim().toUpperCase(),
+    businessAccountId: String(source.businessAccountId || '').trim(),
+    phoneNumber: String(source.phoneNumber || '').trim(),
+    phoneNumberId: String(source.phoneNumberId || '').trim(),
+    verifyToken,
+    accessToken,
+    graphVersion: String(source.graphVersion || defaultWhatsAppConnection.graphVersion).trim(),
+    lastError
+  };
+
+  if (!['ACTIVE', 'INACTIVE'].includes(normalizedConnection.status)) {
+    throw new Error('WhatsApp connector status must be ACTIVE or INACTIVE');
+  }
+
+  if (!normalizedConnection.graphVersion) {
+    normalizedConnection.graphVersion = defaultWhatsAppConnection.graphVersion;
+  }
+
+  return normalizedConnection;
+}
+
+function serializeWhatsAppConnection(connection) {
+  return {
+    name: connection.name,
+    status: connection.status,
+    businessAccountId: connection.businessAccountId,
+    phoneNumber: connection.phoneNumber,
+    phoneNumberId: connection.phoneNumberId,
+    verifyToken: encryptStoredSecret(connection.verifyToken),
+    accessToken: encryptStoredSecret(connection.accessToken),
+    graphVersion: connection.graphVersion,
+    lastError: connection.lastError || ''
+  };
+}
+
+function loadWhatsAppConnectionFromDisk() {
+  try {
+    const raw = readFileSync(whatsappConnectionFile, 'utf8');
+    return normalizeWhatsAppConnection(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load WhatsApp connector file, using defaults instead.', error.message);
+    }
+    persistWhatsAppConnection(defaultWhatsAppConnection);
+    return normalizeWhatsAppConnection(defaultWhatsAppConnection);
+  }
+}
+
+function persistWhatsAppConnection(nextConnection = whatsappConnection) {
+  mkdirSync(path.dirname(whatsappConnectionFile), { recursive: true });
+  writeFileSync(whatsappConnectionFile, JSON.stringify(serializeWhatsAppConnection(nextConnection), null, 2));
 }
 
 function normalizeWhatsAppCampaign(entry, index = 0) {
@@ -888,6 +968,10 @@ export function getPetpoojaConnections() {
   return petpoojaConnections.map((connection) => ({ ...connection }));
 }
 
+export function getWhatsAppConnection() {
+  return { ...whatsappConnection };
+}
+
 function getBrand(brandId) {
   return brands.find((brand) => brand.id === brandId) || null;
 }
@@ -991,6 +1075,17 @@ export function replacePetpoojaConnections(nextConnections, { persist = true } =
   }
 
   return normalizedConnections;
+}
+
+export function replaceWhatsAppConnection(nextConnection, { persist = true } = {}) {
+  const normalizedConnection = normalizeWhatsAppConnection(nextConnection);
+  whatsappConnection = normalizedConnection;
+
+  if (persist) {
+    persistWhatsAppConnection(normalizedConnection);
+  }
+
+  return normalizedConnection;
 }
 
 export function replaceOutlets(nextOutlets, { persist = true } = {}) {
@@ -1533,6 +1628,17 @@ const petpoojaProvider = {
 
 let whatsappFetch = globalThis.fetch?.bind(globalThis);
 
+function getWhatsAppConnectionSnapshot() {
+  const configuredConnection = getWhatsAppConnection();
+  return {
+    ...configuredConnection,
+    accessToken: configuredConnection.accessToken || String(process.env.WHATSAPP_ACCESS_TOKEN || '').trim(),
+    phoneNumberId: configuredConnection.phoneNumberId || String(process.env.WHATSAPP_PHONE_NUMBER_ID || '').trim(),
+    verifyToken: configuredConnection.verifyToken || String(process.env.WHATSAPP_VERIFY_TOKEN || '').trim(),
+    graphVersion: configuredConnection.graphVersion || String(process.env.WHATSAPP_GRAPH_VERSION || '').trim() || 'v25.0'
+  };
+}
+
 function normalizeWhatsAppRecipient(value) {
   return String(value || '')
     .trim()
@@ -1540,9 +1646,10 @@ function normalizeWhatsAppRecipient(value) {
 }
 
 async function sendWhatsAppViaMeta(payload) {
-  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID;
-  const graphVersion = process.env.WHATSAPP_GRAPH_VERSION || 'v25.0';
+  const connection = getWhatsAppConnectionSnapshot();
+  const accessToken = connection.accessToken;
+  const phoneNumberId = connection.phoneNumberId;
+  const graphVersion = connection.graphVersion || 'v25.0';
 
   if (!accessToken || !phoneNumberId || !whatsappFetch) {
     return null;
@@ -2028,15 +2135,16 @@ function renderAdminMenuPage() {
 
         <section class="panel">
           <h2>WhatsApp Connector</h2>
-          <p class="hint">Monitor live webhook activity, confirm outbound replies, and keep the WhatsApp ordering flow healthy for the selected outlet.</p>
-          <div class="preview-card">
-            <strong>Connector checklist</strong>
-            <div>1. Point your Meta webhook callback to <code>/whatsapp/webhook</code> on this deployed backend.</div>
-            <div>2. Keep <code>WHATSAPP_VERIFY_TOKEN</code>, <code>WHATSAPP_PHONE_NUMBER_ID</code>, and <code>WHATSAPP_ACCESS_TOKEN</code> configured in the backend environment.</div>
-            <div>3. Send a real inbound message to the connected WhatsApp number and confirm the event appears below.</div>
-            <div>4. Verify the outbound menu link or follow-up reply is logged for the same conversation.</div>
-            <div>5. Use the audit log and campaign history below to trace any failed sends or outlet routing issues.</div>
+          <p class="hint">Save the shared Meta WhatsApp connector here using the same fill-in-box pattern as the Petpooja setup.</p>
+          <div class="note-card">
+            <strong>Connector details</strong>
+            <span class="hint">Fill the Meta fields once, save them, then use the activity table below to verify webhook traffic.</span>
           </div>
+          <div class="actions">
+            <button class="primary" id="save-whatsapp-connection" type="button">Save WhatsApp Connector</button>
+          </div>
+          <div id="whatsapp-connection-status" class="status"></div>
+          <div id="whatsapp-connection-form" class="outlet-grid"></div>
           <div class="actions">
             <button class="secondary" id="refresh-whatsapp-events" type="button">Refresh WhatsApp Activity</button>
           </div>
@@ -2106,6 +2214,9 @@ function renderAdminMenuPage() {
       const ordersTable = document.getElementById('orders-table');
       const paymentsTable = document.getElementById('payments-table');
       const auditTable = document.getElementById('audit-table');
+      const whatsappConnectionStatusBox = document.getElementById('whatsapp-connection-status');
+      const whatsappConnectionForm = document.getElementById('whatsapp-connection-form');
+      const saveWhatsAppConnectionButton = document.getElementById('save-whatsapp-connection');
       const whatsappEventsTable = document.getElementById('whatsapp-events-table');
       const refreshWhatsAppEventsButton = document.getElementById('refresh-whatsapp-events');
       const marketingStatusBox = document.getElementById('marketing-status');
@@ -2130,6 +2241,7 @@ function renderAdminMenuPage() {
       let brandState = [];
       let petpoojaConnectionState = [];
       let outletState = [];
+      let whatsappConnectionState = null;
       let marketingAudienceState = [];
       const selectedMarketingRecipients = new Set();
 
@@ -2199,6 +2311,19 @@ function renderAdminMenuPage() {
         };
       }
 
+      function defaultWhatsAppConnection() {
+        return {
+          name: 'Primary WhatsApp Connector',
+          status: 'ACTIVE',
+          businessAccountId: '',
+          phoneNumber: '',
+          phoneNumberId: '',
+          verifyToken: '',
+          accessToken: '',
+          graphVersion: 'v25.0'
+        };
+      }
+
       function setStatus(message, type) {
         statusBox.textContent = message;
         statusBox.className = 'status show ' + type;
@@ -2222,6 +2347,11 @@ function renderAdminMenuPage() {
       function setPetpoojaConnectionStatus(message, type) {
         petpoojaConnectionStatusBox.textContent = message;
         petpoojaConnectionStatusBox.className = message ? 'status show ' + type : 'status';
+      }
+
+      function setWhatsAppConnectionStatus(message, type) {
+        whatsappConnectionStatusBox.textContent = message;
+        whatsappConnectionStatusBox.className = message ? 'status show ' + type : 'status';
       }
 
       function setOrdersStatus(message, type) {
@@ -2493,6 +2623,23 @@ function renderAdminMenuPage() {
           '<div class="full micro-copy">Then assign the account in Outlets and pull the menu.</div>';
       }
 
+      function renderWhatsAppConnectionForm() {
+        const connection = whatsappConnectionState || defaultWhatsAppConnection();
+        whatsappConnectionForm.innerHTML =
+          '<div class="full"><div class="hint">Save the Meta account once, then monitor events below.</div></div>' +
+          '<div class="full field-group-title">Connector</div>' +
+          '<div><label>Display name</label><input type="text" data-whatsapp-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary WhatsApp Connector" /></div>' +
+          '<div><label>Status</label><select data-whatsapp-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
+          '<div><label>Business account ID</label><input type="text" data-whatsapp-connection-field="businessAccountId" value="' + escapeHtml(connection.businessAccountId || '') + '" placeholder="Optional Meta business account id" /></div>' +
+          '<div><label>WhatsApp number</label><input type="text" data-whatsapp-connection-field="phoneNumber" value="' + escapeHtml(connection.phoneNumber || '') + '" placeholder="+919900000001" /></div>' +
+          '<div class="full field-group-title">Credentials</div>' +
+          '<div><label>Phone number ID</label><input type="text" data-whatsapp-connection-field="phoneNumberId" value="' + escapeHtml(connection.phoneNumberId || '') + '" placeholder="Meta phone number id" /></div>' +
+          '<div><label>Graph version</label><input type="text" data-whatsapp-connection-field="graphVersion" value="' + escapeHtml(connection.graphVersion || 'v25.0') + '" placeholder="v25.0" /></div>' +
+          '<div class="full"><label>Verify token</label><input type="text" data-whatsapp-connection-field="verifyToken" value="' + escapeHtml(connection.verifyToken || '') + '" placeholder="Meta webhook verify token" /></div>' +
+          '<div class="full"><label>Access token</label><input type="text" data-whatsapp-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" placeholder="Paste the Meta Cloud API access token" /></div>' +
+          '<div class="full micro-copy">Saved fields are used first for webhook verification and outbound sends. Blank fields fall back to environment variables.</div>';
+      }
+
       function renderOutletSelector() {
         if (!outletState.length) {
           outletSelect.innerHTML = '';
@@ -2570,6 +2717,15 @@ function renderAdminMenuPage() {
         petpoojaConnectionSelect.value = String(selectedIndex);
       }
 
+      function syncWhatsAppConnectionStateFromForm() {
+        if (!whatsappConnectionState) {
+          whatsappConnectionState = defaultWhatsAppConnection();
+        }
+        Array.from(whatsappConnectionForm.querySelectorAll('[data-whatsapp-connection-field]')).forEach((field) => {
+          whatsappConnectionState[field.dataset.whatsappConnectionField] = field.value.trim();
+        });
+      }
+
       function getSelectedOutletId() {
         const selectedIndex = Number(outletSelect.value || 0);
         return outletState[selectedIndex]?.id || outletState[0]?.id || 'showcase_hq';
@@ -2596,6 +2752,14 @@ function renderAdminMenuPage() {
         if (outletState.length) {
           renderOutletForm(Number(outletSelect.value || 0));
         }
+      }
+
+      async function loadWhatsAppConnection() {
+        const res = await fetch('/api/admin/whatsapp-connection');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not load WhatsApp connector');
+        whatsappConnectionState = data.connection || defaultWhatsAppConnection();
+        renderWhatsAppConnectionForm();
       }
 
       async function loadOutlets() {
@@ -2802,6 +2966,10 @@ function renderAdminMenuPage() {
         syncPetpoojaConnectionStateFromForm();
       });
 
+      whatsappConnectionForm.addEventListener('input', () => {
+        syncWhatsAppConnectionStateFromForm();
+      });
+
       brandForm.addEventListener('change', async (event) => {
         const fileInput = event.target.closest('[data-brand-logo-file="true"]');
         if (!fileInput) return;
@@ -2932,6 +3100,24 @@ function renderAdminMenuPage() {
           setPetpoojaConnectionStatus('Petpooja connections saved.', 'ok');
         } catch (error) {
           setPetpoojaConnectionStatus(error.message, 'error');
+        }
+      });
+
+      saveWhatsAppConnectionButton.addEventListener('click', async () => {
+        try {
+          syncWhatsAppConnectionStateFromForm();
+          const res = await fetch('/api/admin/whatsapp-connection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connection: whatsappConnectionState })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not save WhatsApp connector');
+          whatsappConnectionState = data.connection || defaultWhatsAppConnection();
+          renderWhatsAppConnectionForm();
+          setWhatsAppConnectionStatus('WhatsApp connector saved.', 'ok');
+        } catch (error) {
+          setWhatsAppConnectionStatus(error.message, 'error');
         }
       });
 
@@ -3174,6 +3360,8 @@ function renderAdminMenuPage() {
       petpoojaConnectionState = [defaultPetpoojaConnection()];
       renderPetpoojaConnectionSelector();
       renderPetpoojaConnectionForm(0);
+      whatsappConnectionState = defaultWhatsAppConnection();
+      renderWhatsAppConnectionForm();
 
       uploadImageButton.addEventListener('click', async () => {
         try {
@@ -3221,6 +3409,7 @@ function renderAdminMenuPage() {
 
       loadBrands()
         .then(() => loadPetpoojaConnections())
+        .then(() => loadWhatsAppConnection())
         .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData()]))
         .catch((error) => setStatus(error.message, 'error'));
     </script>
@@ -3710,6 +3899,10 @@ app.get('/api/admin/petpooja-connections', (req, res) => {
   res.json({ connections: getPetpoojaConnections() });
 });
 
+app.get('/api/admin/whatsapp-connection', (req, res) => {
+  res.json({ connection: getWhatsAppConnection() });
+});
+
 app.post('/api/admin/brands', (req, res) => {
   try {
     const nextBrands = replaceBrands(req.body?.brands);
@@ -3736,6 +3929,29 @@ app.post('/api/admin/petpooja-connections', (req, res) => {
   try {
     const nextConnections = replacePetpoojaConnections(req.body?.connections);
     res.json({ ok: true, connections: nextConnections });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/whatsapp-connection', (req, res) => {
+  try {
+    const nextConnection = replaceWhatsAppConnection(req.body?.connection);
+    logAuditEvent({
+      outletId: null,
+      action: 'WHATSAPP_CONNECTOR_SAVED',
+      entityType: 'whatsapp_connector',
+      entityId: 'primary',
+      summary: `Saved WhatsApp connector ${nextConnection.name}`,
+      actor: 'admin-ui',
+      metadata: {
+        status: nextConnection.status,
+        phoneNumber: nextConnection.phoneNumber,
+        phoneNumberId: nextConnection.phoneNumberId,
+        graphVersion: nextConnection.graphVersion
+      }
+    });
+    res.json({ ok: true, connection: nextConnection });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -4119,7 +4335,8 @@ app.get('/whatsapp/webhook', (req, res) => {
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
-  if (mode === 'subscribe' && token === process.env.WHATSAPP_VERIFY_TOKEN) {
+  const connection = getWhatsAppConnectionSnapshot();
+  if (mode === 'subscribe' && token === connection.verifyToken) {
     return res.status(200).send(challenge);
   }
   return res.sendStatus(403);
