@@ -1130,13 +1130,19 @@ export function replaceBrands(nextBrands, { persist = true } = {}) {
   if (invalidBrandConnector) {
     throw new Error(`Brand ${invalidBrandConnector.id} references missing WhatsApp connector ${invalidBrandConnector.whatsappConnectionId}`);
   }
-  const invalidOutlet = outlets.find((outlet) => !brandIds.has(outlet.brandId));
-  if (invalidOutlet) {
-    throw new Error(`Cannot save brands because outlet ${invalidOutlet.id} references missing brand ${invalidOutlet.brandId}`);
-  }
+  const fallbackBrandId = normalizedBrands[0]?.id || '';
+  const nextOutlets = outlets.map((outlet) => (
+    brandIds.has(outlet.brandId)
+      ? outlet
+      : { ...outlet, brandId: fallbackBrandId }
+  ));
   brands = normalizedBrands;
+  outlets = nextOutlets;
   if (persist) {
     persistBrands(normalizedBrands);
+    persistOutlets(nextOutlets);
+    persistUploadedImages();
+    persistAuditLogs();
   }
   return normalizedBrands;
 }
@@ -2199,31 +2205,6 @@ function renderAdminMenuPage() {
         </section>
 
         <section class="panel">
-          <h2>Image Upload</h2>
-          <p class="hint">Upload a menu image for the selected outlet. The backend will host it, store the metadata, and return a URL you can paste into the menu item's image field.</p>
-          <div class="actions">
-            <label class="file-label" for="image-file">Choose image</label>
-            <input id="image-file" type="file" accept="image/*" />
-            <button class="primary" id="upload-image" type="button">Upload Image</button>
-          </div>
-          <div id="image-status" class="status"></div>
-          <label for="image-url" style="margin-top: 16px;">Uploaded image URL</label>
-          <textarea id="image-url" style="min-height: 88px;"></textarea>
-        </section>
-
-        <section class="panel">
-          <h2>Image Library</h2>
-          <p class="hint">These are the persisted uploaded images for the selected outlet.</p>
-          <div id="image-library"></div>
-        </section>
-
-        <section class="panel">
-          <h2>Preview</h2>
-          <p class="hint">This preview reads from the form and JSON editor before you save.</p>
-          <div id="preview" class="preview"></div>
-        </section>
-
-        <section class="panel">
           <h2>Orders</h2>
           <p class="hint">Orders shown here are filtered to the selected outlet.</p>
           <div id="orders-status" class="status"></div>
@@ -2235,12 +2216,6 @@ function renderAdminMenuPage() {
           <p class="hint">Use these actions for local payment operations until the live gateway handles every payment event end to end.</p>
           <div id="payments-status" class="status"></div>
           <div id="payments-table"></div>
-        </section>
-
-        <section class="panel">
-          <h2>Audit Log</h2>
-          <p class="hint">Outlet-scoped admin history for menu, payment, order, and image operations.</p>
-          <div id="audit-table"></div>
         </section>
 
         <section class="panel">
@@ -2308,6 +2283,16 @@ function renderAdminMenuPage() {
           </div>
           <div id="marketing-campaigns"></div>
         </section>
+
+        <div style="display:none;">
+          <input id="image-file" type="file" accept="image/*" />
+          <button id="upload-image" type="button"></button>
+          <div id="image-status"></div>
+          <textarea id="image-url"></textarea>
+          <div id="image-library"></div>
+          <div id="preview"></div>
+          <div id="audit-table"></div>
+        </div>
       </div>
     </div>
 
