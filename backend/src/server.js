@@ -2146,19 +2146,85 @@ function renderAdminMenuPage() {
       }
       h2 { margin: 0; font-size: var(--text-section); line-height: 1.05; letter-spacing: -0.03em; font-weight: 600; font-family: var(--font-display); }
       p { line-height: 1.58; font-size: var(--text-base); color: var(--muted); }
-      .grid { display: grid; gap: 22px; margin-top: 26px; }
-      .flow-section { display: grid; gap: 18px; margin-top: 30px; }
-      .flow-section-head { padding: 0 6px; }
+      .section-nav {
+        position: sticky;
+        top: 12px;
+        z-index: 5;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 18px;
+        padding: 8px;
+        border: 1px solid rgba(116, 93, 61, 0.14);
+        border-radius: 22px;
+        background: rgba(255, 252, 246, 0.86);
+        box-shadow: 0 14px 32px rgba(28, 21, 12, 0.08);
+        backdrop-filter: blur(14px);
+      }
+      .section-nav a {
+        min-height: 42px;
+        border-radius: 16px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 12px;
+        color: var(--text);
+        text-decoration: none;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: center;
+        background: rgba(255, 255, 255, 0.74);
+        border: 1px solid rgba(116, 93, 61, 0.1);
+      }
+      .section-nav a:hover { box-shadow: 0 10px 22px rgba(23, 20, 17, 0.08); }
+      .grid { display: grid; gap: 22px; margin-top: 20px; }
+      .flow-section {
+        --section-color: var(--primary);
+        --section-bg: rgba(10, 111, 92, 0.08);
+        display: grid;
+        gap: 18px;
+        margin-top: 30px;
+        scroll-margin-top: 96px;
+      }
+      .flow-section.setup { --section-color: #0a6f5c; --section-bg: rgba(10, 111, 92, 0.09); }
+      .flow-section.connectors { --section-color: #315f9c; --section-bg: rgba(49, 95, 156, 0.1); }
+      .flow-section.analytics { --section-color: #8a4f16; --section-bg: rgba(210, 130, 42, 0.12); }
+      .flow-section.marketing { --section-color: #9a3760; --section-bg: rgba(154, 55, 96, 0.1); }
+      .flow-section-head {
+        padding: 18px 20px;
+        border-radius: 22px;
+        border: 1px solid rgba(116, 93, 61, 0.12);
+        border-left: 6px solid var(--section-color);
+        background: linear-gradient(135deg, var(--section-bg), rgba(255, 255, 255, 0.72));
+      }
       .flow-section-kicker {
         margin: 0 0 6px;
         letter-spacing: 0.14em;
         text-transform: uppercase;
         font-size: 12px;
         font-weight: 700;
-        color: var(--primary);
+        color: var(--section-color);
       }
       .flow-section-head h2 { margin: 0; }
       .flow-section-head p { margin: 8px 0 0; }
+      .flow-section-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .flow-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        padding: 0 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.72);
+        border: 1px solid rgba(116, 93, 61, 0.12);
+        color: var(--text);
+        font-size: 12px;
+        font-weight: 700;
+      }
       .panel {
         background: linear-gradient(180deg, var(--surface-strong), var(--surface));
         border-radius: 28px;
@@ -2275,6 +2341,7 @@ function renderAdminMenuPage() {
       @media (max-width: 720px) {
         .item-grid, .outlet-grid { grid-template-columns: 1fr; }
         .item-head-actions, .image-tools { grid-template-columns: 1fr; }
+        .section-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); position: static; }
         .shell { padding-inline: 16px; }
         .hero { padding: 24px; }
         h1 { font-size: 34px; }
@@ -2289,11 +2356,23 @@ function renderAdminMenuPage() {
         <p>Manage branded ordering surfaces, outlet configuration, menus, payments, and WhatsApp journeys from one polished operational console.</p>
       </section>
 
-      <section class="flow-section">
+      <nav class="section-nav" aria-label="Admin setup sections">
+        <a href="#outlet-setup">Outlet Setup</a>
+        <a href="#connectors-setup">Connectors Setup</a>
+        <a href="#live-analytics">Live Analytics</a>
+        <a href="#whatsapp-marketing">WhatsApp Marketing</a>
+      </nav>
+
+      <section class="flow-section setup" id="outlet-setup">
         <div class="flow-section-head">
           <p class="flow-section-kicker">Section 1</p>
-          <h2>Outset Setup</h2>
+          <h2>Outlet Setup</h2>
           <p class="hint">Set up the brand and outlet structure first so links, menus, routing, and checkout all point to the right destination.</p>
+          <div class="flow-section-meta">
+            <span class="flow-chip">Brand profile</span>
+            <span class="flow-chip">Outlet routing</span>
+            <span class="flow-chip">Customer links</span>
+          </div>
         </div>
         <div class="grid">
           <section class="panel">
@@ -2328,11 +2407,17 @@ function renderAdminMenuPage() {
         </div>
       </section>
 
-      <section class="flow-section">
+      <section class="flow-section connectors" id="connectors-setup">
         <div class="flow-section-head">
           <p class="flow-section-kicker">Section 2</p>
           <h2>Connectors Setup</h2>
           <p class="hint">Save shared integrations once, then map them to the right brand or outlet before you sync menus and go live.</p>
+          <div class="flow-section-meta">
+            <span class="flow-chip">Petpooja</span>
+            <span class="flow-chip">Payments</span>
+            <span class="flow-chip">WhatsApp</span>
+            <span class="flow-chip">Menu</span>
+          </div>
         </div>
         <div class="grid">
           <section class="panel">
@@ -2443,11 +2528,16 @@ function renderAdminMenuPage() {
         </div>
       </section>
 
-      <section class="flow-section">
+      <section class="flow-section analytics" id="live-analytics">
         <div class="flow-section-head">
           <p class="flow-section-kicker">Section 3</p>
           <h2>Live Analytics</h2>
           <p class="hint">Track the selected outlet’s live order, payment, and WhatsApp activity once the setup is complete.</p>
+          <div class="flow-section-meta">
+            <span class="flow-chip">Orders</span>
+            <span class="flow-chip">Payments</span>
+            <span class="flow-chip">WhatsApp activity</span>
+          </div>
         </div>
         <div class="grid">
           <section class="panel">
@@ -2475,11 +2565,16 @@ function renderAdminMenuPage() {
         </div>
       </section>
 
-      <section class="flow-section">
+      <section class="flow-section marketing" id="whatsapp-marketing">
         <div class="flow-section-head">
           <p class="flow-section-kicker">Section 4</p>
           <h2>WhatsApp Marketing</h2>
           <p class="hint">Send campaign messages after your brand, outlet, connectors, and live menu are already in place.</p>
+          <div class="flow-section-meta">
+            <span class="flow-chip">Audience</span>
+            <span class="flow-chip">Campaign image</span>
+            <span class="flow-chip">Broadcast</span>
+          </div>
         </div>
         <div class="grid">
           <section class="panel">
