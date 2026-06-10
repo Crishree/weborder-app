@@ -2147,6 +2147,18 @@ function renderAdminMenuPage() {
       h2 { margin: 0; font-size: var(--text-section); line-height: 1.05; letter-spacing: -0.03em; font-weight: 600; font-family: var(--font-display); }
       p { line-height: 1.58; font-size: var(--text-base); color: var(--muted); }
       .grid { display: grid; gap: 22px; margin-top: 26px; }
+      .flow-section { display: grid; gap: 18px; margin-top: 30px; }
+      .flow-section-head { padding: 0 6px; }
+      .flow-section-kicker {
+        margin: 0 0 6px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--primary);
+      }
+      .flow-section-head h2 { margin: 0; }
+      .flow-section-head p { margin: 8px 0 0; }
       .panel {
         background: linear-gradient(180deg, var(--surface-strong), var(--surface));
         border-radius: 28px;
@@ -2277,193 +2289,233 @@ function renderAdminMenuPage() {
         <p>Manage branded ordering surfaces, outlet configuration, menus, payments, and WhatsApp journeys from one polished operational console.</p>
       </section>
 
-      <div class="grid">
-        <section class="panel">
-          <h2>Brands</h2>
-          <p class="hint">Keep this section simple: brand name, optional logo, tag line, and the app URL used in customer-facing links.</p>
-          <label for="brand-select">Current Brand</label>
-          <select id="brand-select"></select>
-          <div class="actions">
-            <button class="secondary" id="add-brand" type="button">Add brand</button>
-            <button class="secondary" id="remove-brand" type="button">Remove brand</button>
-            <button class="primary" id="save-brands" type="button">Save brands</button>
-          </div>
-          <div id="brand-status" class="status"></div>
-          <div id="brand-form" class="outlet-grid"></div>
-        </section>
+      <section class="flow-section">
+        <div class="flow-section-head">
+          <p class="flow-section-kicker">Section 1</p>
+          <h2>Outset Setup</h2>
+          <p class="hint">Set up the brand and outlet structure first so links, menus, routing, and checkout all point to the right destination.</p>
+        </div>
+        <div class="grid">
+          <section class="panel">
+            <h2>Brands</h2>
+            <p class="hint">Keep this section simple: brand name, optional logo, tag line, and the app URL used in customer-facing links.</p>
+            <label for="brand-select">Current Brand</label>
+            <select id="brand-select"></select>
+            <div class="actions">
+              <button class="secondary" id="add-brand" type="button">Add brand</button>
+              <button class="secondary" id="remove-brand" type="button">Remove brand</button>
+              <button class="primary" id="save-brands" type="button">Save brands</button>
+            </div>
+            <div id="brand-status" class="status"></div>
+            <div id="brand-form" class="outlet-grid"></div>
+          </section>
 
-        <section class="panel">
-          <h2>Petpooja Connections</h2>
-          <p class="hint">Save each Petpooja account once, then reuse it where needed.</p>
-          <div class="note-card">
-            <strong>Account details</strong>
-            <span class="hint">Keep account credentials here. Outlet-specific IDs live in Outlets.</span>
-          </div>
-          <div id="petpooja-connection-select-wrap">
-            <label for="petpooja-connection-select">Saved Petpooja account</label>
-            <select id="petpooja-connection-select"></select>
-            <p class="micro-copy">Shown only when more than one account is saved.</p>
-          </div>
-          <div class="actions">
-            <button class="secondary" id="add-petpooja-connection" type="button">Add connection</button>
-            <button class="secondary" id="remove-petpooja-connection" type="button">Remove connection</button>
-            <button class="primary" id="save-petpooja-connections" type="button">Save connections</button>
-          </div>
-          <div id="petpooja-connection-status" class="status"></div>
-          <div id="petpooja-connection-form" class="outlet-grid"></div>
-        </section>
+          <section class="panel">
+            <h2>Outlets</h2>
+            <p class="hint">Set the outlet details used for menus, orders, payments, and nearest-outlet routing.</p>
+            <div id="outlet-select-wrap">
+              <label for="outlet-select">Current outlet</label>
+              <select id="outlet-select"></select>
+            </div>
+            <div id="outlet-select-empty" class="micro-copy" style="display:none;">Add your first outlet to continue.</div>
+            <div class="actions">
+              <button class="secondary" id="add-outlet" type="button">Add outlet</button>
+              <button class="primary" id="save-outlets" type="button">Save outlets</button>
+            </div>
+            <div id="outlet-status" class="status"></div>
+            <div id="outlet-form" class="outlet-grid"></div>
+          </section>
+        </div>
+      </section>
 
-        <section class="panel">
-          <h2>Payment Connectors</h2>
-          <p class="hint">Save each payment account once, assign it to a brand, and optionally override it for specific outlets.</p>
-          <div class="note-card">
-            <strong>Connector details</strong>
-            <span class="hint">Use one brand-level gateway account by default. Only add outlet-level overrides when settlement must flow to a different merchant account.</span>
-          </div>
-          <div id="payment-connection-select-wrap">
-            <label for="payment-connection-select">Saved payment connector</label>
-            <select id="payment-connection-select"></select>
-            <p class="micro-copy">Shown only when more than one connector is saved.</p>
-          </div>
-          <div class="actions">
-            <button class="secondary" id="add-payment-connection" type="button">Add Payment Connector</button>
-            <button class="secondary" id="remove-payment-connection" type="button">Remove Payment Connector</button>
-            <button class="primary" id="save-payment-connections" type="button">Save Payment Connectors</button>
-          </div>
-          <div id="payment-connection-status" class="status"></div>
-          <div id="payment-connection-form" class="outlet-grid"></div>
-          <div class="note-card">
-            <strong>Assignments</strong>
-            <span class="hint">Use the current Brand and Outlet selected elsewhere on this page, then choose the payment connector mapping here.</span>
-          </div>
-          <div id="payment-assignment-form" class="outlet-grid"></div>
-          <div class="actions">
-            <button class="secondary" id="save-payment-assignments" type="button">Save Payment Assignments</button>
-          </div>
-        </section>
+      <section class="flow-section">
+        <div class="flow-section-head">
+          <p class="flow-section-kicker">Section 2</p>
+          <h2>Connectors Setup</h2>
+          <p class="hint">Save shared integrations once, then map them to the right brand or outlet before you sync menus and go live.</p>
+        </div>
+        <div class="grid">
+          <section class="panel">
+            <h2>Petpooja Connections</h2>
+            <p class="hint">Save each Petpooja account once, then reuse it where needed.</p>
+            <div class="note-card">
+              <strong>Account details</strong>
+              <span class="hint">Keep account credentials here. Outlet-specific IDs live in Outlets.</span>
+            </div>
+            <div id="petpooja-connection-select-wrap">
+              <label for="petpooja-connection-select">Saved Petpooja account</label>
+              <select id="petpooja-connection-select"></select>
+              <p class="micro-copy">Shown only when more than one account is saved.</p>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="add-petpooja-connection" type="button">Add connection</button>
+              <button class="secondary" id="remove-petpooja-connection" type="button">Remove connection</button>
+              <button class="primary" id="save-petpooja-connections" type="button">Save connections</button>
+            </div>
+            <div id="petpooja-connection-status" class="status"></div>
+            <div id="petpooja-connection-form" class="outlet-grid"></div>
+          </section>
 
-        <section class="panel">
-          <h2>Outlets</h2>
-          <p class="hint">Set the outlet details used for menus, orders, and payments.</p>
-          <div id="outlet-select-wrap">
-            <label for="outlet-select">Current outlet</label>
-            <select id="outlet-select"></select>
-          </div>
-          <div id="outlet-select-empty" class="micro-copy" style="display:none;">Add your first outlet to continue.</div>
-          <div class="actions">
-            <button class="secondary" id="add-outlet" type="button">Add outlet</button>
-            <button class="primary" id="save-outlets" type="button">Save outlets</button>
-          </div>
-          <div id="outlet-status" class="status"></div>
-          <div id="outlet-form" class="outlet-grid"></div>
-        </section>
+          <section class="panel">
+            <h2>Payment Connectors</h2>
+            <p class="hint">Save each payment account once, assign it to a brand, and optionally override it for specific outlets.</p>
+            <div class="note-card">
+              <strong>Connector details</strong>
+              <span class="hint">Use one brand-level gateway account by default. Only add outlet-level overrides when settlement must flow to a different merchant account.</span>
+            </div>
+            <div id="payment-connection-select-wrap">
+              <label for="payment-connection-select">Saved payment connector</label>
+              <select id="payment-connection-select"></select>
+              <p class="micro-copy">Shown only when more than one connector is saved.</p>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="add-payment-connection" type="button">Add Payment Connector</button>
+              <button class="secondary" id="remove-payment-connection" type="button">Remove Payment Connector</button>
+              <button class="primary" id="save-payment-connections" type="button">Save Payment Connectors</button>
+            </div>
+            <div id="payment-connection-status" class="status"></div>
+            <div id="payment-connection-form" class="outlet-grid"></div>
+            <div class="note-card">
+              <strong>Assignments</strong>
+              <span class="hint">Use the current Brand and Outlet selected elsewhere on this page, then choose the payment connector mapping here.</span>
+            </div>
+            <div id="payment-assignment-form" class="outlet-grid"></div>
+            <div class="actions">
+              <button class="secondary" id="save-payment-assignments" type="button">Save Payment Assignments</button>
+            </div>
+          </section>
 
-        <section class="panel">
-          <h2>Menu Items</h2>
-          <p class="hint">Bring in a menu from a file or pull it from Petpooja, then review and save.</p>
-          <div class="actions">
-            <label class="file-label primary" for="menu-file">Upload Menu File</label>
-            <input id="menu-file" type="file" accept=".json,.csv,.xlsx,.xls,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
-            <button class="primary" id="pull-petpooja-menu" type="button">Pull From Petpooja</button>
-          </div>
-          <div class="actions">
-            <a class="link-btn" href="/api/admin/menu/sample.csv" download="menu-sample.csv">Download Sample CSV</a>
-            <button class="secondary" id="load-current" type="button">Reload Current Menu</button>
-            <button class="secondary" id="add-item" type="button">Add Menu Item</button>
-            <button class="primary" id="save-menu" type="button">Save Menu</button>
-          </div>
-          <div class="micro-copy">For Petpooja sync, save the account first and finish the outlet mapping.</div>
-          <div id="status" class="status"></div>
-          <div id="menu-items" class="menu-items"></div>
-          <details>
-            <summary>Advanced JSON Editor</summary>
-            <p class="hint">This stays in sync with the form. You can still paste raw JSON if needed.</p>
-            <label for="menu-json">Menu JSON</label>
-            <textarea id="menu-json"></textarea>
-          </details>
-        </section>
+          <section class="panel">
+            <h2>WhatsApp Connectors</h2>
+            <p class="hint">Save reusable WhatsApp connectors here, assign one as the brand default, and optionally override it per outlet.</p>
+            <div class="note-card">
+              <strong>Connector details</strong>
+              <span class="hint">Each brand can reuse one shared number across multiple outlets, or an outlet can override it with a dedicated number later.</span>
+            </div>
+            <div id="whatsapp-connection-select-wrap">
+              <label for="whatsapp-connection-select">Saved WhatsApp connector</label>
+              <select id="whatsapp-connection-select"></select>
+              <p class="micro-copy">Shown only when more than one connector is saved.</p>
+            </div>
+            <div class="actions">
+              <button class="secondary" id="add-whatsapp-connection" type="button">Add WhatsApp Connector</button>
+              <button class="secondary" id="remove-whatsapp-connection" type="button">Remove WhatsApp Connector</button>
+            </div>
+            <div id="whatsapp-connection-status" class="status"></div>
+            <div id="whatsapp-connection-form" class="outlet-grid"></div>
+            <div class="actions">
+              <button class="primary" id="save-whatsapp-connection" type="button">Save WhatsApp Connector</button>
+            </div>
+            <div class="note-card">
+              <strong>Assignments</strong>
+              <span class="hint">Use the current Brand and Outlet selected elsewhere on this page, then choose the connector mapping here.</span>
+            </div>
+            <div id="whatsapp-assignment-form" class="outlet-grid"></div>
+            <div class="actions">
+              <button class="secondary" id="save-whatsapp-assignments" type="button">Save WhatsApp Assignments</button>
+            </div>
+          </section>
 
-        <section class="panel">
-          <h2>Orders</h2>
-          <p class="hint">Orders shown here are filtered to the selected outlet.</p>
-          <div id="orders-status" class="status"></div>
-          <div id="orders-table"></div>
-        </section>
+          <section class="panel">
+            <h2>Menu</h2>
+            <p class="hint">Bring in a menu from a file or pull it from Petpooja, then review and save.</p>
+            <div class="actions">
+              <label class="file-label primary" for="menu-file">Upload Menu File</label>
+              <input id="menu-file" type="file" accept=".json,.csv,.xlsx,.xls,application/json,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" />
+              <button class="primary" id="pull-petpooja-menu" type="button">Pull From Petpooja</button>
+            </div>
+            <div class="actions">
+              <a class="link-btn" href="/api/admin/menu/sample.csv" download="menu-sample.csv">Download Sample CSV</a>
+              <button class="secondary" id="load-current" type="button">Reload Current Menu</button>
+              <button class="secondary" id="add-item" type="button">Add Menu Item</button>
+              <button class="primary" id="save-menu" type="button">Save Menu</button>
+            </div>
+            <div class="micro-copy">For Petpooja sync, save the account first and finish the outlet mapping.</div>
+            <div id="status" class="status"></div>
+            <div id="menu-items" class="menu-items"></div>
+            <details>
+              <summary>Advanced JSON Editor</summary>
+              <p class="hint">This stays in sync with the form. You can still paste raw JSON if needed.</p>
+              <label for="menu-json">Menu JSON</label>
+              <textarea id="menu-json"></textarea>
+            </details>
+          </section>
+        </div>
+      </section>
 
-        <section class="panel">
-          <h2>Payments</h2>
-          <p class="hint">Use these actions for local payment operations until the live gateway handles every payment event end to end.</p>
-          <div id="payments-status" class="status"></div>
-          <div id="payments-table"></div>
-        </section>
+      <section class="flow-section">
+        <div class="flow-section-head">
+          <p class="flow-section-kicker">Section 3</p>
+          <h2>Live Analytics</h2>
+          <p class="hint">Track the selected outlet’s live order, payment, and WhatsApp activity once the setup is complete.</p>
+        </div>
+        <div class="grid">
+          <section class="panel">
+            <h2>Orders</h2>
+            <p class="hint">Orders shown here are filtered to the selected outlet.</p>
+            <div id="orders-status" class="status"></div>
+            <div id="orders-table"></div>
+          </section>
 
-        <section class="panel">
-          <h2>WhatsApp Connector</h2>
-          <p class="hint">Save reusable WhatsApp connectors here, assign one as the brand default, and optionally override it per outlet.</p>
-          <div class="note-card">
-            <strong>Connector details</strong>
-            <span class="hint">Each brand can reuse one shared number across multiple outlets, or an outlet can override it with a dedicated number later.</span>
-          </div>
-          <div id="whatsapp-connection-select-wrap">
-            <label for="whatsapp-connection-select">Saved WhatsApp connector</label>
-            <select id="whatsapp-connection-select"></select>
-            <p class="micro-copy">Shown only when more than one connector is saved.</p>
-          </div>
-          <div class="actions">
-            <button class="secondary" id="add-whatsapp-connection" type="button">Add WhatsApp Connector</button>
-            <button class="secondary" id="remove-whatsapp-connection" type="button">Remove WhatsApp Connector</button>
-          </div>
-          <div id="whatsapp-connection-status" class="status"></div>
-          <div id="whatsapp-connection-form" class="outlet-grid"></div>
-          <div class="actions">
-            <button class="primary" id="save-whatsapp-connection" type="button">Save WhatsApp Connector</button>
-          </div>
-          <div class="note-card">
-            <strong>Assignments</strong>
-            <span class="hint">Use the current Brand and Outlet selected elsewhere on this page, then choose the connector mapping here.</span>
-          </div>
-          <div id="whatsapp-assignment-form" class="outlet-grid"></div>
-          <div class="actions">
-            <button class="secondary" id="save-whatsapp-assignments" type="button">Save WhatsApp Assignments</button>
-          </div>
-          <div class="actions">
-            <button class="secondary" id="refresh-whatsapp-events" type="button">Refresh WhatsApp Activity</button>
-          </div>
-          <div id="whatsapp-events-table"></div>
-        </section>
+          <section class="panel">
+            <h2>Payments</h2>
+            <p class="hint">Use these actions for local payment operations until the live gateway handles every payment event end to end.</p>
+            <div id="payments-status" class="status"></div>
+            <div id="payments-table"></div>
+          </section>
 
-        <section class="panel">
+          <section class="panel">
+            <h2>WhatsApp Activity</h2>
+            <p class="hint">Review recent inbound and outbound activity for the currently assigned brand and outlet path.</p>
+            <div class="actions">
+              <button class="secondary" id="refresh-whatsapp-events" type="button">Refresh WhatsApp Activity</button>
+            </div>
+            <div id="whatsapp-events-table"></div>
+          </section>
+        </div>
+      </section>
+
+      <section class="flow-section">
+        <div class="flow-section-head">
+          <p class="flow-section-kicker">Section 4</p>
           <h2>WhatsApp Marketing</h2>
-          <p class="hint">Build a simple daily WhatsApp campaign in three steps: choose the audience, upload the campaign image, then send the message.</p>
-          <div id="marketing-status" class="status"></div>
-          <div class="actions">
-            <button class="secondary" id="refresh-marketing-audience" type="button">Refresh Audience</button>
-          </div>
-          <p class="field-group-title">Step 1</p>
-          <label>Choose audience</label>
-          <p class="micro-copy">Select previous opted-in customers from this outlet.</p>
-          <div id="marketing-audience"></div>
-          <p class="field-group-title">Step 2</p>
-          <label for="marketing-image-file">Campaign Image</label>
-          <p class="micro-copy">Upload the image you want to send in the morning campaign.</p>
-          <div class="image-tools">
-            <label class="file-label" for="marketing-image-file">Upload Campaign Image</label>
-            <input id="marketing-image-file" type="file" accept="image/*" />
-          </div>
-          <label for="marketing-image-url">Campaign image URL</label>
-          <input id="marketing-image-url" type="text" placeholder="Upload an image or paste an existing public image URL" />
-          <label for="marketing-caption">Caption</label>
-          <textarea id="marketing-caption" style="min-height: 88px;"></textarea>
-          <p class="field-group-title">Step 3</p>
-          <label>Send message</label>
-          <p class="micro-copy">Review the image and caption, then send this campaign to the selected audience.</p>
-          <div class="actions">
-            <button class="primary" id="send-marketing-campaign" type="button">Send Campaign</button>
-          </div>
-          <div id="marketing-campaigns"></div>
-        </section>
+          <p class="hint">Send campaign messages after your brand, outlet, connectors, and live menu are already in place.</p>
+        </div>
+        <div class="grid">
+          <section class="panel">
+            <h2>WhatsApp Marketing</h2>
+            <p class="hint">Build a simple daily WhatsApp campaign in three steps: choose the audience, upload the campaign image, then send the message.</p>
+            <div id="marketing-status" class="status"></div>
+            <div class="actions">
+              <button class="secondary" id="refresh-marketing-audience" type="button">Refresh Audience</button>
+            </div>
+            <p class="field-group-title">Step 1</p>
+            <label>Choose audience</label>
+            <p class="micro-copy">Select previous opted-in customers from this outlet.</p>
+            <div id="marketing-audience"></div>
+            <p class="field-group-title">Step 2</p>
+            <label for="marketing-image-file">Campaign Image</label>
+            <p class="micro-copy">Upload the image you want to send in the morning campaign.</p>
+            <div class="image-tools">
+              <label class="file-label" for="marketing-image-file">Upload Campaign Image</label>
+              <input id="marketing-image-file" type="file" accept="image/*" />
+            </div>
+            <label for="marketing-image-url">Campaign image URL</label>
+            <input id="marketing-image-url" type="text" placeholder="Upload an image or paste an existing public image URL" />
+            <label for="marketing-caption">Caption</label>
+            <textarea id="marketing-caption" style="min-height: 88px;"></textarea>
+            <p class="field-group-title">Step 3</p>
+            <label>Send message</label>
+            <p class="micro-copy">Review the image and caption, then send this campaign to the selected audience.</p>
+            <div class="actions">
+              <button class="primary" id="send-marketing-campaign" type="button">Send Campaign</button>
+            </div>
+            <div id="marketing-campaigns"></div>
+          </section>
+        </div>
+      </section>
 
-        <div style="display:none;">
+      <div style="display:none;">
           <input id="image-file" type="file" accept="image/*" />
           <button id="upload-image" type="button"></button>
           <div id="image-status"></div>
@@ -2471,7 +2523,6 @@ function renderAdminMenuPage() {
           <div id="image-library"></div>
           <div id="preview"></div>
           <div id="audit-table"></div>
-        </div>
       </div>
     </div>
 
