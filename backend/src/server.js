@@ -23,6 +23,7 @@ let sessionsFile = process.env.SESSIONS_FILE || path.join(__dirname, '..', 'data
 let ordersFile = process.env.ORDERS_FILE || path.join(__dirname, '..', 'data', 'orders.json');
 let imageManifestFile = process.env.IMAGE_MANIFEST_FILE || path.join(__dirname, '..', 'data', 'uploaded-images.json');
 let auditLogFile = process.env.AUDIT_LOG_FILE || path.join(__dirname, '..', 'data', 'audit-logs.json');
+let paymentConnectionsFile = process.env.PAYMENT_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'payment-connections.json');
 let whatsappEventsFile = process.env.WHATSAPP_EVENTS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-events.json');
 let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-campaigns.json');
 let whatsappConnectionsFile = process.env.WHATSAPP_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-connections.json');
@@ -47,6 +48,7 @@ const defaultBrands = [
     name: 'PikQuik Showcase',
     customerAppBaseUrl: process.env.FRONTEND_BASE_URL || '',
     petpoojaConnectionId: '',
+    paymentConnectionId: '',
     whatsappConnectionId: '',
     heroEyebrow: 'Multi-brand pickup commerce',
     heroTitle: 'Order ahead. Pay online. Pick up fast.',
@@ -66,6 +68,7 @@ const defaultOutlets = [
     id: 'showcase_hq',
     brandId: 'showcase',
     petpoojaConnectionId: '',
+    paymentConnectionId: '',
     whatsappConnectionId: '',
     name: 'Showcase HQ',
     status: 'ACTIVE',
@@ -82,6 +85,18 @@ const defaultOutlets = [
   }
 ];
 const defaultPetpoojaConnections = [];
+const defaultPaymentConnection = {
+  id: '',
+  name: 'Primary Razorpay Connector',
+  provider: 'RAZORPAY',
+  status: 'ACTIVE',
+  keyId: '',
+  keySecret: '',
+  webhookSecret: '',
+  accountId: '',
+  paymentMode: 'payment_link'
+};
+const defaultPaymentConnections = [];
 const defaultWhatsAppConnection = {
   id: '',
   name: 'Primary WhatsApp Connector',
@@ -198,6 +213,7 @@ const upload = multer({
 
 let brands = loadBrandsFromDisk();
 let petpoojaConnections = loadPetpoojaConnectionsFromDisk();
+let paymentConnections = loadPaymentConnectionsFromDisk();
 let outlets = loadOutletsFromDisk();
 let menusByOutlet = loadMenusFromDisk();
 let uploadedImagesByOutlet = loadUploadedImagesFromDisk();
@@ -223,6 +239,7 @@ function normalizeBrands(rawBrands) {
       name: String(brand.name || '').trim(),
       customerAppBaseUrl: String(brand.customerAppBaseUrl || '').trim().replace(/\/+$/, ''),
       petpoojaConnectionId: String(brand.petpoojaConnectionId || '').trim(),
+      paymentConnectionId: String(brand.paymentConnectionId || '').trim(),
       whatsappConnectionId: String(brand.whatsappConnectionId || '').trim(),
       heroEyebrow: String(brand.heroEyebrow || brand.name || '').trim(),
       heroTitle: String(brand.heroTitle || 'Order ahead, pick up faster').trim(),
@@ -262,6 +279,7 @@ function normalizeOutlets(rawOutlets) {
       id: String(outlet.id || '').trim(),
       brandId: String(outlet.brandId || defaultBrands[0]?.id || '').trim(),
       petpoojaConnectionId: String(outlet.petpoojaConnectionId || '').trim(),
+      paymentConnectionId: String(outlet.paymentConnectionId || '').trim(),
       whatsappConnectionId: String(outlet.whatsappConnectionId || '').trim(),
       name: String(outlet.name || '').trim(),
       status: String(outlet.status || 'ACTIVE').trim().toUpperCase(),
@@ -452,6 +470,95 @@ function persistPetpoojaConnections(nextConnections) {
   writeFileSync(
     petpoojaConnectionsFile,
     JSON.stringify(nextConnections.map((connection) => serializePetpoojaConnection(connection)), null, 2)
+  );
+}
+
+function normalizePaymentConnection(rawConnection, index = 0) {
+  if (!rawConnection || typeof rawConnection !== 'object') {
+    throw new Error(`Payment connector at index ${index} must be an object`);
+  }
+
+  const normalizedConnection = {
+    id: String(rawConnection.id || '').trim() || `payment_connector_${index + 1}`,
+    name: String(rawConnection.name || defaultPaymentConnection.name).trim(),
+    provider: String(rawConnection.provider || defaultPaymentConnection.provider).trim().toUpperCase(),
+    status: String(rawConnection.status || defaultPaymentConnection.status).trim().toUpperCase(),
+    keyId: '',
+    keySecret: '',
+    webhookSecret: '',
+    accountId: String(rawConnection.accountId || '').trim(),
+    paymentMode: String(rawConnection.paymentMode || defaultPaymentConnection.paymentMode).trim(),
+    lastError: String(rawConnection.lastError || '').trim()
+  };
+
+  try {
+    normalizedConnection.keyId = decryptStoredSecret(rawConnection.keyId);
+    normalizedConnection.keySecret = decryptStoredSecret(rawConnection.keySecret);
+    normalizedConnection.webhookSecret = decryptStoredSecret(rawConnection.webhookSecret);
+  } catch (error) {
+    normalizedConnection.lastError = error.message;
+  }
+
+  if (!normalizedConnection.name) throw new Error(`Payment connector ${normalizedConnection.id} is missing name`);
+  if (!['RAZORPAY'].includes(normalizedConnection.provider)) {
+    throw new Error(`Payment connector ${normalizedConnection.id} has invalid provider`);
+  }
+  if (!['ACTIVE', 'INACTIVE'].includes(normalizedConnection.status)) {
+    throw new Error(`Payment connector ${normalizedConnection.id} has invalid status`);
+  }
+
+  return normalizedConnection;
+}
+
+function normalizePaymentConnections(rawConnections) {
+  if (!Array.isArray(rawConnections)) {
+    throw new Error('Payment connectors must be an array');
+  }
+
+  const seenIds = new Set();
+  return rawConnections.map((connection, index) => {
+    const normalizedConnection = normalizePaymentConnection(connection, index);
+    if (seenIds.has(normalizedConnection.id)) {
+      throw new Error(`Duplicate payment connector id: ${normalizedConnection.id}`);
+    }
+    seenIds.add(normalizedConnection.id);
+    return normalizedConnection;
+  });
+}
+
+function serializePaymentConnection(connection) {
+  return {
+    id: connection.id,
+    name: connection.name,
+    provider: connection.provider,
+    status: connection.status,
+    keyId: encryptStoredSecret(connection.keyId),
+    keySecret: encryptStoredSecret(connection.keySecret),
+    webhookSecret: encryptStoredSecret(connection.webhookSecret),
+    accountId: connection.accountId,
+    paymentMode: connection.paymentMode,
+    lastError: connection.lastError || ''
+  };
+}
+
+function loadPaymentConnectionsFromDisk() {
+  try {
+    const raw = readFileSync(paymentConnectionsFile, 'utf8');
+    return normalizePaymentConnections(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load payment connectors file, using defaults instead.', error.message);
+    }
+    persistPaymentConnections(defaultPaymentConnections);
+    return normalizePaymentConnections(defaultPaymentConnections);
+  }
+}
+
+function persistPaymentConnections(nextConnections) {
+  mkdirSync(path.dirname(paymentConnectionsFile), { recursive: true });
+  writeFileSync(
+    paymentConnectionsFile,
+    JSON.stringify(nextConnections.map((connection) => serializePaymentConnection(connection)), null, 2)
   );
 }
 
@@ -1006,6 +1113,10 @@ export function getPetpoojaConnections() {
   return petpoojaConnections.map((connection) => ({ ...connection }));
 }
 
+export function getPaymentConnections() {
+  return paymentConnections.map((connection) => ({ ...connection }));
+}
+
 export function getWhatsAppConnections() {
   return whatsappConnections.map((connection) => ({ ...connection }));
 }
@@ -1016,6 +1127,10 @@ function getBrand(brandId) {
 
 function getPetpoojaConnection(connectionId) {
   return petpoojaConnections.find((connection) => connection.id === connectionId) || null;
+}
+
+function getPaymentConnection(connectionId) {
+  return paymentConnections.find((connection) => connection.id === connectionId) || null;
 }
 
 function getWhatsAppConnection(connectionId) {
@@ -1066,6 +1181,21 @@ function resolvePetpoojaConnectionForOutlet(outletId) {
     brand,
     connectionId,
     connection: connectionId ? getPetpoojaConnection(connectionId) : null
+  };
+}
+
+function resolvePaymentConnectionForOutlet(outletId) {
+  const outlet = getOutlet(outletId);
+  const brand = outlet ? getBrand(outlet.brandId) : null;
+  const connectionId =
+    String(outlet?.paymentConnectionId || '').trim() ||
+    String(brand?.paymentConnectionId || '').trim();
+
+  return {
+    outlet,
+    brand,
+    connectionId,
+    connection: connectionId ? getPaymentConnection(connectionId) : null
   };
 }
 
@@ -1126,6 +1256,10 @@ function buildShowcaseBrand(brand) {
 export function replaceBrands(nextBrands, { persist = true } = {}) {
   const normalizedBrands = normalizeBrands(nextBrands);
   const brandIds = new Set(normalizedBrands.map((brand) => brand.id));
+  const invalidBrandPaymentConnector = normalizedBrands.find((brand) => brand.paymentConnectionId && !getPaymentConnection(brand.paymentConnectionId));
+  if (invalidBrandPaymentConnector) {
+    throw new Error(`Brand ${invalidBrandPaymentConnector.id} references missing payment connector ${invalidBrandPaymentConnector.paymentConnectionId}`);
+  }
   const invalidBrandConnector = normalizedBrands.find((brand) => brand.whatsappConnectionId && !getWhatsAppConnection(brand.whatsappConnectionId));
   if (invalidBrandConnector) {
     throw new Error(`Brand ${invalidBrandConnector.id} references missing WhatsApp connector ${invalidBrandConnector.whatsappConnectionId}`);
@@ -1158,6 +1292,17 @@ export function replacePetpoojaConnections(nextConnections, { persist = true } =
   return normalizedConnections;
 }
 
+export function replacePaymentConnections(nextConnections, { persist = true } = {}) {
+  const normalizedConnections = normalizePaymentConnections(nextConnections);
+  paymentConnections = normalizedConnections;
+
+  if (persist) {
+    persistPaymentConnections(normalizedConnections);
+  }
+
+  return normalizedConnections;
+}
+
 export function replaceWhatsAppConnections(nextConnections, { persist = true } = {}) {
   const normalizedConnections = normalizeWhatsAppConnections(nextConnections);
   whatsappConnections = normalizedConnections;
@@ -1171,6 +1316,10 @@ export function replaceWhatsAppConnections(nextConnections, { persist = true } =
 
 export function replaceOutlets(nextOutlets, { persist = true } = {}) {
   const normalizedOutlets = normalizeOutlets(nextOutlets);
+  const invalidOutletPaymentConnector = normalizedOutlets.find((outlet) => outlet.paymentConnectionId && !getPaymentConnection(outlet.paymentConnectionId));
+  if (invalidOutletPaymentConnector) {
+    throw new Error(`Outlet ${invalidOutletPaymentConnector.id} references missing payment connector ${invalidOutletPaymentConnector.paymentConnectionId}`);
+  }
   const invalidOutletConnector = normalizedOutlets.find((outlet) => outlet.whatsappConnectionId && !getWhatsAppConnection(outlet.whatsappConnectionId));
   if (invalidOutletConnector) {
     throw new Error(`Outlet ${invalidOutletConnector.id} references missing WhatsApp connector ${invalidOutletConnector.whatsappConnectionId}`);
@@ -1729,6 +1878,7 @@ const petpoojaProvider = {
 };
 
 let whatsappFetch = globalThis.fetch?.bind(globalThis);
+let paymentFetch = globalThis.fetch?.bind(globalThis);
 
 function buildWhatsAppConnectionSnapshot(connection = null) {
   const configuredConnection = connection || null;
@@ -2164,6 +2314,35 @@ function renderAdminMenuPage() {
         </section>
 
         <section class="panel">
+          <h2>Payment Connectors</h2>
+          <p class="hint">Save each payment account once, assign it to a brand, and optionally override it for specific outlets.</p>
+          <div class="note-card">
+            <strong>Connector details</strong>
+            <span class="hint">Use one brand-level Razorpay account by default. Only add outlet-level overrides when settlement must flow to a different merchant account.</span>
+          </div>
+          <div id="payment-connection-select-wrap">
+            <label for="payment-connection-select">Saved payment connector</label>
+            <select id="payment-connection-select"></select>
+            <p class="micro-copy">Shown only when more than one connector is saved.</p>
+          </div>
+          <div class="actions">
+            <button class="secondary" id="add-payment-connection" type="button">Add Payment Connector</button>
+            <button class="secondary" id="remove-payment-connection" type="button">Remove Payment Connector</button>
+            <button class="primary" id="save-payment-connections" type="button">Save Payment Connectors</button>
+          </div>
+          <div id="payment-connection-status" class="status"></div>
+          <div id="payment-connection-form" class="outlet-grid"></div>
+          <div class="note-card">
+            <strong>Assignments</strong>
+            <span class="hint">Use the current Brand and Outlet selected elsewhere on this page, then choose the payment connector mapping here.</span>
+          </div>
+          <div id="payment-assignment-form" class="outlet-grid"></div>
+          <div class="actions">
+            <button class="secondary" id="save-payment-assignments" type="button">Save Payment Assignments</button>
+          </div>
+        </section>
+
+        <section class="panel">
           <h2>Outlets</h2>
           <p class="hint">Set the outlet details used for menus, orders, and payments.</p>
           <div id="outlet-select-wrap">
@@ -2315,6 +2494,11 @@ function renderAdminMenuPage() {
       const petpoojaConnectionSelectWrap = document.getElementById('petpooja-connection-select-wrap');
       const petpoojaConnectionSelect = document.getElementById('petpooja-connection-select');
       const petpoojaConnectionForm = document.getElementById('petpooja-connection-form');
+      const paymentConnectionStatusBox = document.getElementById('payment-connection-status');
+      const paymentConnectionSelectWrap = document.getElementById('payment-connection-select-wrap');
+      const paymentConnectionSelect = document.getElementById('payment-connection-select');
+      const paymentConnectionForm = document.getElementById('payment-connection-form');
+      const paymentAssignmentForm = document.getElementById('payment-assignment-form');
       const brandSelect = document.getElementById('brand-select');
       const brandForm = document.getElementById('brand-form');
       const outletSelectWrap = document.getElementById('outlet-select-wrap');
@@ -2354,10 +2538,15 @@ function renderAdminMenuPage() {
       const addPetpoojaConnectionButton = document.getElementById('add-petpooja-connection');
       const removePetpoojaConnectionButton = document.getElementById('remove-petpooja-connection');
       const savePetpoojaConnectionsButton = document.getElementById('save-petpooja-connections');
+      const addPaymentConnectionButton = document.getElementById('add-payment-connection');
+      const removePaymentConnectionButton = document.getElementById('remove-payment-connection');
+      const savePaymentConnectionsButton = document.getElementById('save-payment-connections');
+      const savePaymentAssignmentsButton = document.getElementById('save-payment-assignments');
       const addOutletButton = document.getElementById('add-outlet');
       const saveOutletsButton = document.getElementById('save-outlets');
       let brandState = [];
       let petpoojaConnectionState = [];
+      let paymentConnectionState = [];
       let outletState = [];
       let whatsappConnectionState = [];
       let marketingAudienceState = [];
@@ -2431,6 +2620,20 @@ function renderAdminMenuPage() {
         };
       }
 
+      function defaultPaymentConnection() {
+        return {
+          id: '',
+          name: 'Primary Razorpay Connector',
+          provider: 'RAZORPAY',
+          status: 'ACTIVE',
+          keyId: '',
+          keySecret: '',
+          webhookSecret: '',
+          accountId: '',
+          paymentMode: 'payment_link'
+        };
+      }
+
       function defaultWhatsAppConnection() {
         return {
           id: '',
@@ -2468,6 +2671,11 @@ function renderAdminMenuPage() {
       function setPetpoojaConnectionStatus(message, type) {
         petpoojaConnectionStatusBox.textContent = message;
         petpoojaConnectionStatusBox.className = message ? 'status show ' + type : 'status';
+      }
+
+      function setPaymentConnectionStatus(message, type) {
+        paymentConnectionStatusBox.textContent = message;
+        paymentConnectionStatusBox.className = message ? 'status show ' + type : 'status';
       }
 
       function setWhatsAppConnectionStatus(message, type) {
@@ -2705,6 +2913,16 @@ function renderAdminMenuPage() {
         petpoojaConnectionSelectWrap.style.display = petpoojaConnectionState.length > 1 ? 'block' : 'none';
       }
 
+      function renderPaymentConnectionSelector() {
+        if (!paymentConnectionState.length) {
+          paymentConnectionState = [defaultPaymentConnection()];
+        }
+        paymentConnectionSelect.innerHTML = paymentConnectionState.map((connection, index) =>
+          '<option value="' + escapeHtml(String(index)) + '">' + escapeHtml(connection.name || connection.id || ('Payment Connector ' + (index + 1))) + '</option>'
+        ).join('');
+        paymentConnectionSelectWrap.style.display = paymentConnectionState.length > 1 ? 'block' : 'none';
+      }
+
       function renderBrandForm(selectedIndex) {
         const brand = brandState[selectedIndex] || defaultBrand();
         brandForm.innerHTML =
@@ -2733,6 +2951,44 @@ function renderAdminMenuPage() {
           '<div><label>App key</label><input type="text" data-petpooja-connection-field="appKey" value="' + escapeHtml(connection.appKey || '') + '" /></div>' +
           '<div><label>App secret</label><input type="text" data-petpooja-connection-field="appSecret" value="' + escapeHtml(connection.appSecret || '') + '" /></div>' +
           '<div class="full micro-copy">Then assign the account in Outlets and pull the menu.</div>';
+      }
+
+      function renderPaymentConnectionForm(selectedIndex) {
+        const connection = paymentConnectionState[selectedIndex] || defaultPaymentConnection();
+        paymentConnectionForm.innerHTML =
+          '<div class="full"><div class="hint">Save the payment account once, then assign it to brands or outlets.</div></div>' +
+          '<div class="full field-group-title">Connector</div>' +
+          '<div><label>Internal connector ID</label><input type="text" data-payment-connection-field="id" value="' + escapeHtml(connection.id || '') + '" placeholder="brand_main_razorpay" /></div>' +
+          '<div><label>Display name</label><input type="text" data-payment-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary Razorpay Connector" /></div>' +
+          '<div><label>Provider</label><input type="text" data-payment-connection-field="provider" value="' + escapeHtml(connection.provider || 'RAZORPAY') + '" readonly /></div>' +
+          '<div><label>Status</label><select data-payment-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
+          '<div class="full field-group-title">Credentials</div>' +
+          '<div><label>Key ID</label><input type="text" data-payment-connection-field="keyId" value="' + escapeHtml(connection.keyId || '') + '" placeholder="rzp_live_xxxxx" /></div>' +
+          '<div><label>Key Secret</label><input type="text" data-payment-connection-field="keySecret" value="' + escapeHtml(connection.keySecret || '') + '" placeholder="Razorpay key secret" /></div>' +
+          '<div><label>Webhook secret</label><input type="text" data-payment-connection-field="webhookSecret" value="' + escapeHtml(connection.webhookSecret || '') + '" placeholder="Razorpay webhook secret" /></div>' +
+          '<div><label>Linked account ID (optional)</label><input type="text" data-payment-connection-field="accountId" value="' + escapeHtml(connection.accountId || '') + '" placeholder="For Razorpay Route or linked accounts" /></div>' +
+          '<div class="full"><label>Payment mode</label><input type="text" data-payment-connection-field="paymentMode" value="' + escapeHtml(connection.paymentMode || 'payment_link') + '" placeholder="payment_link" /></div>';
+      }
+
+      function renderPaymentAssignments() {
+        const currentBrand = brandState[Number(brandSelect.value || 0)] || defaultBrand();
+        const currentOutlet = outletState[Number(outletSelect.value || 0)] || defaultOutlet();
+        const connectorOptions = ['<option value="">No connector assigned</option>'].concat(
+          paymentConnectionState.map((connection) =>
+            '<option value="' + escapeHtml(connection.id || '') + '"' + (currentBrand.paymentConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
+          )
+        ).join('');
+        const outletConnectorOptions = ['<option value="">Use brand default</option>'].concat(
+          paymentConnectionState.map((connection) =>
+            '<option value="' + escapeHtml(connection.id || '') + '"' + (currentOutlet.paymentConnectionId === connection.id ? ' selected' : '') + '>' + escapeHtml(connection.name || connection.id) + '</option>'
+          )
+        ).join('');
+        paymentAssignmentForm.innerHTML =
+          '<div class="full"><div class="hint">Assignments follow the Brand and Outlet currently selected on this page.</div></div>' +
+          '<div><label>Current brand</label><input type="text" value="' + escapeHtml(currentBrand.name || currentBrand.id || 'No brand selected') + '" readonly /></div>' +
+          '<div><label>Brand default payment connector</label><select data-payment-brand-assignment="paymentConnectionId">' + connectorOptions + '</select></div>' +
+          '<div><label>Current outlet</label><input type="text" value="' + escapeHtml(currentOutlet.name || currentOutlet.id || 'No outlet selected') + '" readonly /></div>' +
+          '<div><label>Outlet payment connector override</label><select data-payment-outlet-assignment="paymentConnectionId">' + outletConnectorOptions + '</select></div>';
       }
 
       function renderWhatsAppConnectionSelector() {
@@ -2868,6 +3124,16 @@ function renderAdminMenuPage() {
         petpoojaConnectionSelect.value = String(selectedIndex);
       }
 
+      function syncPaymentConnectionStateFromForm() {
+        const selectedIndex = Number(paymentConnectionSelect.value || 0);
+        if (!paymentConnectionState[selectedIndex]) return;
+        Array.from(paymentConnectionForm.querySelectorAll('[data-payment-connection-field]')).forEach((field) => {
+          paymentConnectionState[selectedIndex][field.dataset.paymentConnectionField] = field.value.trim();
+        });
+        renderPaymentConnectionSelector();
+        paymentConnectionSelect.value = String(selectedIndex);
+      }
+
       function syncWhatsAppConnectionStateFromForm() {
         const selectedIndex = Number(whatsappConnectionSelect.value || 0);
         if (!whatsappConnectionState[selectedIndex]) return;
@@ -2889,6 +3155,7 @@ function renderAdminMenuPage() {
         brandState = data.brands || [];
         renderBrandSelector();
         renderBrandForm(0);
+        renderPaymentAssignments();
         renderWhatsAppAssignments();
       }
 
@@ -2907,6 +3174,16 @@ function renderAdminMenuPage() {
         }
       }
 
+      async function loadPaymentConnections() {
+        const res = await fetch('/api/admin/payment-connections');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not load payment connectors');
+        paymentConnectionState = (data.connections && data.connections.length) ? data.connections : [defaultPaymentConnection()];
+        renderPaymentConnectionSelector();
+        renderPaymentConnectionForm(0);
+        renderPaymentAssignments();
+      }
+
       async function loadWhatsAppConnections() {
         const res = await fetch('/api/admin/whatsapp-connections');
         const data = await res.json();
@@ -2923,6 +3200,7 @@ function renderAdminMenuPage() {
         outletState = data.outlets || [];
         renderOutletSelector();
         renderOutletForm(0);
+        renderPaymentAssignments();
         renderWhatsAppAssignments();
       }
 
@@ -3108,11 +3386,16 @@ function renderAdminMenuPage() {
 
       brandSelect.addEventListener('change', () => {
         renderBrandForm(Number(brandSelect.value || 0));
+        renderPaymentAssignments();
         renderWhatsAppAssignments();
       });
 
       petpoojaConnectionSelect.addEventListener('change', () => {
         renderPetpoojaConnectionForm(Number(petpoojaConnectionSelect.value || 0));
+      });
+
+      paymentConnectionSelect.addEventListener('change', () => {
+        renderPaymentConnectionForm(Number(paymentConnectionSelect.value || 0));
       });
 
       whatsappConnectionSelect.addEventListener('change', () => {
@@ -3125,6 +3408,10 @@ function renderAdminMenuPage() {
 
       petpoojaConnectionForm.addEventListener('input', () => {
         syncPetpoojaConnectionStateFromForm();
+      });
+
+      paymentConnectionForm.addEventListener('input', () => {
+        syncPaymentConnectionStateFromForm();
       });
 
       whatsappConnectionForm.addEventListener('input', () => {
@@ -3153,6 +3440,7 @@ function renderAdminMenuPage() {
 
       outletSelect.addEventListener('change', () => {
         renderOutletForm(Number(outletSelect.value || 0));
+        renderPaymentAssignments();
         renderWhatsAppAssignments();
         Promise.all([loadCurrentMenu(), loadOrdersAndPayments(), loadMarketingData()]).catch((error) => setStatus(error.message, 'error'));
       });
@@ -3166,6 +3454,7 @@ function renderAdminMenuPage() {
         renderBrandSelector();
         brandSelect.value = String(brandState.length - 1);
         renderBrandForm(brandState.length - 1);
+        renderPaymentAssignments();
         renderWhatsAppAssignments();
         setBrandStatus('New brand row added. Fill the details or remove it before saving.', 'ok');
       });
@@ -3176,6 +3465,15 @@ function renderAdminMenuPage() {
         petpoojaConnectionSelect.value = String(petpoojaConnectionState.length - 1);
         renderPetpoojaConnectionForm(petpoojaConnectionState.length - 1);
         setPetpoojaConnectionStatus('New Petpooja connection row added. Fill the details or remove it before saving.', 'ok');
+      });
+
+      addPaymentConnectionButton.addEventListener('click', () => {
+        paymentConnectionState.push(defaultPaymentConnection());
+        renderPaymentConnectionSelector();
+        paymentConnectionSelect.value = String(paymentConnectionState.length - 1);
+        renderPaymentConnectionForm(paymentConnectionState.length - 1);
+        renderPaymentAssignments();
+        setPaymentConnectionStatus('New payment connector row added. Fill the details or remove it before saving.', 'ok');
       });
 
       removePetpoojaConnectionButton.addEventListener('click', () => {
@@ -3202,6 +3500,31 @@ function renderAdminMenuPage() {
         renderBrandForm(Number(brandSelect.value || 0));
         renderOutletForm(Number(outletSelect.value || 0));
         setPetpoojaConnectionStatus('Connection removed from the editor. Click Save connections to persist.', 'ok');
+      });
+
+      removePaymentConnectionButton.addEventListener('click', () => {
+        const selectedIndex = Number(paymentConnectionSelect.value || 0);
+        const selectedConnection = paymentConnectionState[selectedIndex];
+        if (!selectedConnection) return;
+        if (paymentConnectionState.length <= 1) {
+          setPaymentConnectionStatus('At least one payment connector row is required in the editor.', 'error');
+          return;
+        }
+        if (
+          selectedConnection.id &&
+          (brandState.some((brand) => brand.paymentConnectionId === selectedConnection.id) ||
+           outletState.some((outlet) => outlet.paymentConnectionId === selectedConnection.id))
+        ) {
+          setPaymentConnectionStatus('Reassign brands or outlets before removing this payment connector.', 'error');
+          return;
+        }
+        paymentConnectionState.splice(selectedIndex, 1);
+        renderPaymentConnectionSelector();
+        const nextIndex = Math.max(0, Math.min(selectedIndex, paymentConnectionState.length - 1));
+        paymentConnectionSelect.value = String(nextIndex);
+        renderPaymentConnectionForm(nextIndex);
+        renderPaymentAssignments();
+        setPaymentConnectionStatus('Payment connector removed from the editor. Click Save Payment Connectors to persist.', 'ok');
       });
 
       removeBrandButton.addEventListener('click', () => {
@@ -3269,6 +3592,26 @@ function renderAdminMenuPage() {
           setPetpoojaConnectionStatus('Petpooja connections saved.', 'ok');
         } catch (error) {
           setPetpoojaConnectionStatus(error.message, 'error');
+        }
+      });
+
+      savePaymentConnectionsButton.addEventListener('click', async () => {
+        try {
+          syncPaymentConnectionStateFromForm();
+          const res = await fetch('/api/admin/payment-connections', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connections: paymentConnectionState })
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Could not save payment connectors');
+          paymentConnectionState = (data.connections && data.connections.length) ? data.connections : [defaultPaymentConnection()];
+          renderPaymentConnectionSelector();
+          renderPaymentConnectionForm(Number(paymentConnectionSelect.value || 0));
+          renderPaymentAssignments();
+          setPaymentConnectionStatus('Payment connectors saved.', 'ok');
+        } catch (error) {
+          setPaymentConnectionStatus(error.message, 'error');
         }
       });
 
@@ -3365,6 +3708,48 @@ function renderAdminMenuPage() {
           setWhatsAppConnectionStatus('WhatsApp brand and outlet assignments saved.', 'ok');
         } catch (error) {
           setWhatsAppConnectionStatus(error.message, 'error');
+        }
+      });
+
+      savePaymentAssignmentsButton.addEventListener('click', async () => {
+        try {
+          const selectedBrandIndex = Number(brandSelect.value || 0);
+          const selectedOutletIndex = Number(outletSelect.value || 0);
+          const brandAssignmentField = paymentAssignmentForm.querySelector('[data-payment-brand-assignment="paymentConnectionId"]');
+          const outletAssignmentField = paymentAssignmentForm.querySelector('[data-payment-outlet-assignment="paymentConnectionId"]');
+          if (brandState[selectedBrandIndex] && brandAssignmentField) {
+            brandState[selectedBrandIndex].paymentConnectionId = brandAssignmentField.value.trim();
+          }
+          if (outletState[selectedOutletIndex] && outletAssignmentField) {
+            outletState[selectedOutletIndex].paymentConnectionId = outletAssignmentField.value.trim();
+          }
+
+          const [brandsRes, outletsRes] = await Promise.all([
+            fetch('/api/admin/brands', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ brands: brandState })
+            }),
+            fetch('/api/admin/outlets', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ outlets: outletState })
+            })
+          ]);
+          const brandsData = await brandsRes.json();
+          const outletsData = await outletsRes.json();
+          if (!brandsRes.ok) throw new Error(brandsData.error || 'Could not save brand payment assignment');
+          if (!outletsRes.ok) throw new Error(outletsData.error || 'Could not save outlet payment assignment');
+          brandState = brandsData.brands || [];
+          outletState = outletsData.outlets || [];
+          renderBrandSelector();
+          renderBrandForm(Number(brandSelect.value || 0));
+          renderOutletSelector();
+          renderOutletForm(Number(outletSelect.value || 0));
+          renderPaymentAssignments();
+          setPaymentConnectionStatus('Payment brand and outlet assignments saved.', 'ok');
+        } catch (error) {
+          setPaymentConnectionStatus(error.message, 'error');
         }
       });
 
@@ -3609,6 +3994,10 @@ function renderAdminMenuPage() {
       petpoojaConnectionState = [defaultPetpoojaConnection()];
       renderPetpoojaConnectionSelector();
       renderPetpoojaConnectionForm(0);
+      paymentConnectionState = [defaultPaymentConnection()];
+      renderPaymentConnectionSelector();
+      renderPaymentConnectionForm(0);
+      renderPaymentAssignments();
       whatsappConnectionState = [defaultWhatsAppConnection()];
       renderWhatsAppConnectionSelector();
       renderWhatsAppConnectionForm(0);
@@ -3660,6 +4049,7 @@ function renderAdminMenuPage() {
 
       loadBrands()
         .then(() => loadPetpoojaConnections())
+        .then(() => loadPaymentConnections())
         .then(() => loadWhatsAppConnections())
         .then(() => Promise.all([loadOutlets(), loadCurrentMenu(), loadOrdersAndPayments(), loadWhatsAppEvents(), loadMarketingData()]))
         .catch((error) => setStatus(error.message, 'error'));
@@ -3694,20 +4084,107 @@ function calculateCart(items, outletId) {
 }
 
 async function createRazorpayPaymentLink(order) {
-  // TODO: Replace with Razorpay Payment Links API call.
-  // Return the live payment link URL after integrating Razorpay.
-  return `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${order.id}`;
+  const { connectionId, connection } = resolvePaymentConnectionForOutlet(order.outletId);
+  const fallbackPaymentLink = `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${order.id}`;
+
+  if (!connection || connection.status !== 'ACTIVE') {
+    return {
+      paymentLink: fallbackPaymentLink,
+      provider: 'Razorpay',
+      mode: 'payment_link',
+      connectorId: connectionId || '',
+      connectorName: connection?.name || '',
+      paymentLinkId: `plink_${order.id}`,
+      providerOrderId: null,
+      accountId: connection?.accountId || '',
+      liveConfigured: false
+    };
+  }
+
+  if (!connection.keyId || !connection.keySecret || !paymentFetch) {
+    return {
+      paymentLink: fallbackPaymentLink,
+      provider: connection.provider,
+      mode: connection.paymentMode || 'payment_link',
+      connectorId: connection.id,
+      connectorName: connection.name,
+      paymentLinkId: `plink_${order.id}`,
+      providerOrderId: null,
+      accountId: connection.accountId || '',
+      liveConfigured: false
+    };
+  }
+
+  const authHeader = Buffer.from(`${connection.keyId}:${connection.keySecret}`).toString('base64');
+  const response = await paymentFetch('https://api.razorpay.com/v1/payment_links', {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${authHeader}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      amount: Math.round(Number(order.total || 0) * 100),
+      currency: 'INR',
+      description: `Order ${order.id} for ${order.outletId}`,
+      reference_id: order.id,
+      notify: {
+        sms: true,
+        email: false
+      },
+      reminder_enable: true,
+      callback_url: `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${encodeURIComponent(order.id)}`,
+      callback_method: 'get',
+      notes: {
+        orderId: order.id,
+        outletId: order.outletId,
+        brandId: order.brandId || '',
+        paymentConnectionId: connection.id
+      }
+    })
+  });
+
+  const responseText = await response.text();
+  let parsedResponse = null;
+  try {
+    parsedResponse = responseText ? JSON.parse(responseText) : null;
+  } catch {
+    parsedResponse = responseText;
+  }
+
+  if (!response.ok) {
+    throw new Error(
+      `Razorpay payment link failed: ${response.status} ${typeof parsedResponse === 'string' ? parsedResponse : JSON.stringify(parsedResponse)}`
+    );
+  }
+
+  return {
+    paymentLink: parsedResponse?.short_url || parsedResponse?.payment_link || parsedResponse?.url || fallbackPaymentLink,
+    provider: connection.provider,
+    mode: connection.paymentMode || 'payment_link',
+    connectorId: connection.id,
+    connectorName: connection.name,
+    paymentLinkId: parsedResponse?.id || `plink_${order.id}`,
+    providerOrderId: parsedResponse?.order_id || null,
+    accountId: connection.accountId || '',
+    liveConfigured: true,
+    raw: parsedResponse
+  };
 }
 
-function buildPaymentRecord(order, paymentLink) {
+function buildPaymentRecord(order, paymentLinkConfig) {
   return {
-    provider: 'Razorpay',
-    mode: 'payment_link',
+    provider: paymentLinkConfig.provider || 'Razorpay',
+    mode: paymentLinkConfig.mode || 'payment_link',
     status: 'PENDING',
     amount: order.total,
     currency: 'INR',
-    paymentLink,
-    paymentLinkId: `plink_${order.id}`,
+    paymentLink: paymentLinkConfig.paymentLink,
+    paymentLinkId: paymentLinkConfig.paymentLinkId || `plink_${order.id}`,
+    connectorId: paymentLinkConfig.connectorId || '',
+    connectorName: paymentLinkConfig.connectorName || '',
+    providerOrderId: paymentLinkConfig.providerOrderId || null,
+    accountId: paymentLinkConfig.accountId || '',
+    liveConfigured: Boolean(paymentLinkConfig.liveConfigured),
     paymentReference: null,
     verifiedByWebhook: false,
     lastEvent: 'PAYMENT_LINK_CREATED',
@@ -3778,6 +4255,7 @@ function buildOrderAdminSummary(order) {
     paymentStatus: order.paymentStatus,
     orderStatus: order.orderStatus,
     flowState: order.flowState || null,
+    brandId: order.brandId || '',
     pickupCode: order.pickupCode,
     codeActive: order.codeActive,
     createdAt: order.createdAt,
@@ -3863,6 +4341,7 @@ export async function createCheckoutOrder({ sessionId, items, customerMobile, ou
     id: orderId,
     sessionId: session.id,
     outletId: session.outletId,
+    brandId: getOutlet(session.outletId)?.brandId || '',
     customerMobile: session.customerMobile,
     channel: session.channel || channel || 'WEB',
     items: detailedItems,
@@ -3888,9 +4367,9 @@ export async function createCheckoutOrder({ sessionId, items, customerMobile, ou
     }
   };
 
-  const paymentLink = await createRazorpayPaymentLink(order);
-  order.payment = buildPaymentRecord(order, paymentLink);
-  order.paymentLink = paymentLink;
+  const paymentLinkConfig = await createRazorpayPaymentLink(order);
+  order.payment = buildPaymentRecord(order, paymentLinkConfig);
+  order.paymentLink = paymentLinkConfig.paymentLink;
   order.flowState = ORDER_FLOW.PAYMENT_LINK_CREATED;
   orders.set(orderId, order);
   persistOrders();
@@ -3913,7 +4392,7 @@ export async function createCheckoutOrder({ sessionId, items, customerMobile, ou
     }
   });
 
-  return { orderId, total, paymentLink };
+  return { orderId, total, paymentLink: paymentLinkConfig.paymentLink };
 }
 
 export function getOrder(orderId) {
@@ -3945,7 +4424,10 @@ function extractOrderIdFromWebhook(payload) {
 }
 
 function verifyRazorpayWebhookSignature(req) {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  const orderId = extractOrderIdFromWebhook(req.body || {});
+  const order = orderId ? orders.get(orderId) : null;
+  const connector = order?.payment?.connectorId ? getPaymentConnection(order.payment.connectorId) : null;
+  const secret = String(connector?.webhookSecret || process.env.RAZORPAY_WEBHOOK_SECRET || '').trim();
   if (!secret) {
     throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured');
   }
@@ -4150,6 +4632,10 @@ app.get('/api/admin/petpooja-connections', (req, res) => {
   res.json({ connections: getPetpoojaConnections() });
 });
 
+app.get('/api/admin/payment-connections', (req, res) => {
+  res.json({ connections: getPaymentConnections() });
+});
+
 app.get('/api/admin/whatsapp-connections', (req, res) => {
   res.json({ connections: getWhatsAppConnections() });
 });
@@ -4179,6 +4665,31 @@ app.post('/api/admin/brands', (req, res) => {
 app.post('/api/admin/petpooja-connections', (req, res) => {
   try {
     const nextConnections = replacePetpoojaConnections(req.body?.connections);
+    res.json({ ok: true, connections: nextConnections });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/payment-connections', (req, res) => {
+  try {
+    const nextConnections = replacePaymentConnections(req.body?.connections);
+    nextConnections.forEach((connection) => {
+      logAuditEvent({
+        outletId: null,
+        action: 'PAYMENT_CONNECTOR_SAVED',
+        entityType: 'payment_connector',
+        entityId: connection.id,
+        summary: `Saved payment connector ${connection.name}`,
+        actor: 'admin-ui',
+        metadata: {
+          provider: connection.provider,
+          status: connection.status,
+          accountId: connection.accountId,
+          paymentMode: connection.paymentMode
+        }
+      });
+    });
     res.json({ ok: true, connections: nextConnections });
   } catch (error) {
     res.status(400).json({ error: error.message });
