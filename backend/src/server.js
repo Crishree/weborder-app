@@ -87,11 +87,11 @@ const defaultOutlets = [
 const defaultPetpoojaConnections = [];
 const defaultPaymentConnection = {
   id: '',
-  name: 'Primary Razorpay Connector',
+  name: 'Primary Payment Connector',
   provider: 'RAZORPAY',
   status: 'ACTIVE',
-  keyId: '',
-  keySecret: '',
+  apiKey: '',
+  apiSecret: '',
   webhookSecret: '',
   accountId: '',
   paymentMode: 'payment_link'
@@ -483,8 +483,8 @@ function normalizePaymentConnection(rawConnection, index = 0) {
     name: String(rawConnection.name || defaultPaymentConnection.name).trim(),
     provider: String(rawConnection.provider || defaultPaymentConnection.provider).trim().toUpperCase(),
     status: String(rawConnection.status || defaultPaymentConnection.status).trim().toUpperCase(),
-    keyId: '',
-    keySecret: '',
+    apiKey: '',
+    apiSecret: '',
     webhookSecret: '',
     accountId: String(rawConnection.accountId || '').trim(),
     paymentMode: String(rawConnection.paymentMode || defaultPaymentConnection.paymentMode).trim(),
@@ -492,15 +492,15 @@ function normalizePaymentConnection(rawConnection, index = 0) {
   };
 
   try {
-    normalizedConnection.keyId = decryptStoredSecret(rawConnection.keyId);
-    normalizedConnection.keySecret = decryptStoredSecret(rawConnection.keySecret);
+    normalizedConnection.apiKey = decryptStoredSecret(rawConnection.apiKey || rawConnection.keyId);
+    normalizedConnection.apiSecret = decryptStoredSecret(rawConnection.apiSecret || rawConnection.keySecret);
     normalizedConnection.webhookSecret = decryptStoredSecret(rawConnection.webhookSecret);
   } catch (error) {
     normalizedConnection.lastError = error.message;
   }
 
   if (!normalizedConnection.name) throw new Error(`Payment connector ${normalizedConnection.id} is missing name`);
-  if (!['RAZORPAY'].includes(normalizedConnection.provider)) {
+  if (!['RAZORPAY', 'CASHFREE', 'PHONEPE', 'PAYU', 'STRIPE', 'GENERIC'].includes(normalizedConnection.provider)) {
     throw new Error(`Payment connector ${normalizedConnection.id} has invalid provider`);
   }
   if (!['ACTIVE', 'INACTIVE'].includes(normalizedConnection.status)) {
@@ -532,8 +532,8 @@ function serializePaymentConnection(connection) {
     name: connection.name,
     provider: connection.provider,
     status: connection.status,
-    keyId: encryptStoredSecret(connection.keyId),
-    keySecret: encryptStoredSecret(connection.keySecret),
+    apiKey: encryptStoredSecret(connection.apiKey),
+    apiSecret: encryptStoredSecret(connection.apiSecret),
     webhookSecret: encryptStoredSecret(connection.webhookSecret),
     accountId: connection.accountId,
     paymentMode: connection.paymentMode,
@@ -2623,11 +2623,11 @@ function renderAdminMenuPage() {
       function defaultPaymentConnection() {
         return {
           id: '',
-          name: 'Primary Razorpay Connector',
+          name: 'Primary Payment Connector',
           provider: 'RAZORPAY',
           status: 'ACTIVE',
-          keyId: '',
-          keySecret: '',
+          apiKey: '',
+          apiSecret: '',
           webhookSecret: '',
           accountId: '',
           paymentMode: 'payment_link'
@@ -2959,15 +2959,23 @@ function renderAdminMenuPage() {
           '<div class="full"><div class="hint">Save the payment account once, then assign it to brands or outlets.</div></div>' +
           '<div class="full field-group-title">Connector</div>' +
           '<div><label>Internal connector ID</label><input type="text" data-payment-connection-field="id" value="' + escapeHtml(connection.id || '') + '" placeholder="brand_main_razorpay" /></div>' +
-          '<div><label>Display name</label><input type="text" data-payment-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary Razorpay Connector" /></div>' +
-          '<div><label>Provider</label><input type="text" data-payment-connection-field="provider" value="' + escapeHtml(connection.provider || 'RAZORPAY') + '" readonly /></div>' +
+          '<div><label>Display name</label><input type="text" data-payment-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary Payment Connector" /></div>' +
+          '<div><label>Provider</label><select data-payment-connection-field="provider">' +
+            '<option value="RAZORPAY"' + (connection.provider === 'RAZORPAY' ? ' selected' : '') + '>Razorpay</option>' +
+            '<option value="CASHFREE"' + (connection.provider === 'CASHFREE' ? ' selected' : '') + '>Cashfree</option>' +
+            '<option value="PHONEPE"' + (connection.provider === 'PHONEPE' ? ' selected' : '') + '>PhonePe</option>' +
+            '<option value="PAYU"' + (connection.provider === 'PAYU' ? ' selected' : '') + '>PayU</option>' +
+            '<option value="STRIPE"' + (connection.provider === 'STRIPE' ? ' selected' : '') + '>Stripe</option>' +
+            '<option value="GENERIC"' + (connection.provider === 'GENERIC' ? ' selected' : '') + '>Generic</option>' +
+          '</select></div>' +
           '<div><label>Status</label><select data-payment-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
           '<div class="full field-group-title">Credentials</div>' +
-          '<div><label>Key ID</label><input type="text" data-payment-connection-field="keyId" value="' + escapeHtml(connection.keyId || '') + '" placeholder="rzp_live_xxxxx" /></div>' +
-          '<div><label>Key Secret</label><input type="text" data-payment-connection-field="keySecret" value="' + escapeHtml(connection.keySecret || '') + '" placeholder="Razorpay key secret" /></div>' +
-          '<div><label>Webhook secret</label><input type="text" data-payment-connection-field="webhookSecret" value="' + escapeHtml(connection.webhookSecret || '') + '" placeholder="Razorpay webhook secret" /></div>' +
-          '<div><label>Linked account ID (optional)</label><input type="text" data-payment-connection-field="accountId" value="' + escapeHtml(connection.accountId || '') + '" placeholder="For Razorpay Route or linked accounts" /></div>' +
-          '<div class="full"><label>Payment mode</label><input type="text" data-payment-connection-field="paymentMode" value="' + escapeHtml(connection.paymentMode || 'payment_link') + '" placeholder="payment_link" /></div>';
+          '<div><label>API key / client ID</label><input type="text" data-payment-connection-field="apiKey" value="' + escapeHtml(connection.apiKey || '') + '" placeholder="Gateway API key or client id" /></div>' +
+          '<div><label>API secret</label><input type="text" data-payment-connection-field="apiSecret" value="' + escapeHtml(connection.apiSecret || '') + '" placeholder="Gateway API secret" /></div>' +
+          '<div><label>Webhook secret</label><input type="text" data-payment-connection-field="webhookSecret" value="' + escapeHtml(connection.webhookSecret || '') + '" placeholder="Gateway webhook secret" /></div>' +
+          '<div><label>Merchant / account ID (optional)</label><input type="text" data-payment-connection-field="accountId" value="' + escapeHtml(connection.accountId || '') + '" placeholder="Linked account, sub-account, or merchant id" /></div>' +
+          '<div class="full"><label>Payment mode</label><input type="text" data-payment-connection-field="paymentMode" value="' + escapeHtml(connection.paymentMode || 'payment_link') + '" placeholder="payment_link, hosted_checkout, intent" /></div>' +
+          '<div class="full micro-copy">Razorpay is implemented today. Other providers can be configured now and enabled with their API handlers next.</div>';
       }
 
       function renderPaymentAssignments() {
@@ -4083,9 +4091,10 @@ function calculateCart(items, outletId) {
   return { detailedItems, total };
 }
 
-async function createRazorpayPaymentLink(order) {
-  const { connectionId, connection } = resolvePaymentConnectionForOutlet(order.outletId);
+async function createRazorpayPaymentLink(order, connectionConfig) {
   const fallbackPaymentLink = `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${order.id}`;
+  const connectionId = connectionConfig.connectionId;
+  const connection = connectionConfig.connection;
 
   if (!connection || connection.status !== 'ACTIVE') {
     return {
@@ -4101,7 +4110,7 @@ async function createRazorpayPaymentLink(order) {
     };
   }
 
-  if (!connection.keyId || !connection.keySecret || !paymentFetch) {
+  if (!connection.apiKey || !connection.apiSecret || !paymentFetch) {
     return {
       paymentLink: fallbackPaymentLink,
       provider: connection.provider,
@@ -4115,7 +4124,7 @@ async function createRazorpayPaymentLink(order) {
     };
   }
 
-  const authHeader = Buffer.from(`${connection.keyId}:${connection.keySecret}`).toString('base64');
+  const authHeader = Buffer.from(`${connection.apiKey}:${connection.apiSecret}`).toString('base64');
   const response = await paymentFetch('https://api.razorpay.com/v1/payment_links', {
     method: 'POST',
     headers: {
@@ -4169,6 +4178,43 @@ async function createRazorpayPaymentLink(order) {
     liveConfigured: true,
     raw: parsedResponse
   };
+}
+
+async function createPaymentLinkForOrder(order) {
+  const connectionConfig = resolvePaymentConnectionForOutlet(order.outletId);
+  const { connection } = connectionConfig;
+  const fallbackPaymentLink = `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${order.id}`;
+
+  if (!connection || connection.status !== 'ACTIVE') {
+    return {
+      paymentLink: fallbackPaymentLink,
+      provider: order.paymentProvider || 'GENERIC',
+      mode: order.paymentMode || 'payment_link',
+      connectorId: connectionConfig.connectionId || '',
+      connectorName: connection?.name || '',
+      paymentLinkId: `plink_${order.id}`,
+      providerOrderId: null,
+      accountId: connection?.accountId || '',
+      liveConfigured: false
+    };
+  }
+
+  switch (connection.provider) {
+    case 'RAZORPAY':
+      return createRazorpayPaymentLink(order, connectionConfig);
+    default:
+      return {
+        paymentLink: fallbackPaymentLink,
+        provider: connection.provider,
+        mode: connection.paymentMode || order.paymentMode || 'payment_link',
+        connectorId: connection.id,
+        connectorName: connection.name,
+        paymentLinkId: `plink_${order.id}`,
+        providerOrderId: null,
+        accountId: connection.accountId || '',
+        liveConfigured: false
+      };
+  }
 }
 
 function buildPaymentRecord(order, paymentLinkConfig) {
@@ -4346,6 +4392,8 @@ export async function createCheckoutOrder({ sessionId, items, customerMobile, ou
     channel: session.channel || channel || 'WEB',
     items: detailedItems,
     total,
+    paymentProvider: getOutlet(session.outletId)?.paymentProvider || 'GENERIC',
+    paymentMode: getOutlet(session.outletId)?.paymentMode || 'payment_link',
     paymentStatus: 'PENDING',
     orderStatus: 'AWAITING_PAYMENT',
     flowState: ORDER_FLOW.CHECKOUT_CREATED,
@@ -4367,7 +4415,7 @@ export async function createCheckoutOrder({ sessionId, items, customerMobile, ou
     }
   };
 
-  const paymentLinkConfig = await createRazorpayPaymentLink(order);
+  const paymentLinkConfig = await createPaymentLinkForOrder(order);
   order.payment = buildPaymentRecord(order, paymentLinkConfig);
   order.paymentLink = paymentLinkConfig.paymentLink;
   order.flowState = ORDER_FLOW.PAYMENT_LINK_CREATED;
