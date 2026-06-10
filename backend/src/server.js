@@ -78,7 +78,7 @@ const defaultOutlets = [
     longitude: 77.6634,
     locationKeywords: ['showcase', 'demo', 'hq', 'bangalore'],
     timezone: 'Asia/Kolkata',
-    paymentProvider: 'Razorpay',
+    paymentProvider: 'Generic',
     paymentMode: 'payment_link',
     petpoojaOutletId: 'PP_OUTLET_SHOWCASE_HQ',
     supportPhone: '+91-9000000001'
@@ -295,7 +295,7 @@ function normalizeOutlets(rawOutlets) {
             .map((value) => value.trim())
             .filter(Boolean),
       timezone: String(outlet.timezone || 'Asia/Kolkata').trim(),
-      paymentProvider: String(outlet.paymentProvider || 'Razorpay').trim(),
+      paymentProvider: String(outlet.paymentProvider || 'Generic').trim(),
       paymentMode: String(outlet.paymentMode || 'payment_link').trim(),
       petpoojaOutletId: String(outlet.petpoojaOutletId || '').trim(),
       petpoojaRestaurantId: String(outlet.petpoojaRestaurantId || '').trim(),
@@ -2318,7 +2318,7 @@ function renderAdminMenuPage() {
           <p class="hint">Save each payment account once, assign it to a brand, and optionally override it for specific outlets.</p>
           <div class="note-card">
             <strong>Connector details</strong>
-            <span class="hint">Use one brand-level Razorpay account by default. Only add outlet-level overrides when settlement must flow to a different merchant account.</span>
+            <span class="hint">Use one brand-level gateway account by default. Only add outlet-level overrides when settlement must flow to a different merchant account.</span>
           </div>
           <div id="payment-connection-select-wrap">
             <label for="payment-connection-select">Saved payment connector</label>
@@ -2580,7 +2580,7 @@ function renderAdminMenuPage() {
           latitude: '',
           longitude: '',
           locationKeywords: '',
-          paymentProvider: 'Razorpay',
+          paymentProvider: 'Generic',
           paymentMode: 'payment_link',
           petpoojaOutletId: '',
           supportPhone: ''
@@ -2624,7 +2624,7 @@ function renderAdminMenuPage() {
         return {
           id: '',
           name: 'Primary Payment Connector',
-          provider: 'RAZORPAY',
+          provider: 'GENERIC',
           status: 'ACTIVE',
           apiKey: '',
           apiSecret: '',
@@ -2961,12 +2961,12 @@ function renderAdminMenuPage() {
           '<div><label>Internal connector ID</label><input type="text" data-payment-connection-field="id" value="' + escapeHtml(connection.id || '') + '" placeholder="brand_main_razorpay" /></div>' +
           '<div><label>Display name</label><input type="text" data-payment-connection-field="name" value="' + escapeHtml(connection.name || '') + '" placeholder="Primary Payment Connector" /></div>' +
           '<div><label>Provider</label><select data-payment-connection-field="provider">' +
+            '<option value="GENERIC"' + (connection.provider === 'GENERIC' ? ' selected' : '') + '>Generic</option>' +
             '<option value="RAZORPAY"' + (connection.provider === 'RAZORPAY' ? ' selected' : '') + '>Razorpay</option>' +
             '<option value="CASHFREE"' + (connection.provider === 'CASHFREE' ? ' selected' : '') + '>Cashfree</option>' +
             '<option value="PHONEPE"' + (connection.provider === 'PHONEPE' ? ' selected' : '') + '>PhonePe</option>' +
             '<option value="PAYU"' + (connection.provider === 'PAYU' ? ' selected' : '') + '>PayU</option>' +
             '<option value="STRIPE"' + (connection.provider === 'STRIPE' ? ' selected' : '') + '>Stripe</option>' +
-            '<option value="GENERIC"' + (connection.provider === 'GENERIC' ? ' selected' : '') + '>Generic</option>' +
           '</select></div>' +
           '<div><label>Status</label><select data-payment-connection-field="status"><option value="ACTIVE"' + (connection.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (connection.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
           '<div class="full field-group-title">Credentials</div>' +
