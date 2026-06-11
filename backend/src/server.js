@@ -106,7 +106,8 @@ const defaultWhatsAppConnection = {
   phoneNumberId: '',
   verifyToken: '',
   accessToken: '',
-  graphVersion: 'v25.0'
+  graphVersion: 'v25.0',
+  orderNotificationRecipients: ''
 };
 const defaultWhatsAppConnections = [];
 
@@ -585,6 +586,9 @@ function normalizeWhatsAppConnection(rawConnection, index = 0) {
     verifyToken,
     accessToken,
     graphVersion: String(source.graphVersion || defaultWhatsAppConnection.graphVersion).trim(),
+    orderNotificationRecipients: Array.isArray(source.orderNotificationRecipients)
+      ? source.orderNotificationRecipients.map((value) => normalizeWhatsAppRecipient(value)).filter(Boolean).join(',')
+      : String(source.orderNotificationRecipients || '').split(',').map((value) => normalizeWhatsAppRecipient(value)).filter(Boolean).join(','),
     lastError
   };
 
@@ -629,6 +633,7 @@ function serializeWhatsAppConnection(connection) {
     verifyToken: encryptStoredSecret(connection.verifyToken),
     accessToken: encryptStoredSecret(connection.accessToken),
     graphVersion: connection.graphVersion,
+    orderNotificationRecipients: connection.orderNotificationRecipients || '',
     lastError: connection.lastError || ''
   };
 }
@@ -1704,8 +1709,9 @@ function buildPickupConfirmationMessage(order) {
   return `Payment received ✅\n\nOrder: ${order.id}\nPickup code: ${order.pickupCode}\nTotal: ₹${order.total}\nShow this code at the ${pickupPoint}.`;
 }
 
-function getBackendOrderNotificationRecipients() {
-  return String(process.env.BACKEND_ORDER_WHATSAPP_RECIPIENTS || '')
+function getBackendOrderNotificationRecipients(order) {
+  const { connection } = resolveWhatsAppConnectionForOutlet(order?.outletId);
+  return String(connection?.orderNotificationRecipients || process.env.BACKEND_ORDER_WHATSAPP_RECIPIENTS || '')
     .split(',')
     .map((value) => normalizeWhatsAppRecipient(value))
     .filter(Boolean);
@@ -1735,7 +1741,7 @@ function buildBackendOrderNotificationMessage(order) {
 }
 
 async function notifyBackendTeamOfPaidOrder(order) {
-  const recipients = getBackendOrderNotificationRecipients();
+  const recipients = getBackendOrderNotificationRecipients(order);
   if (!recipients.length) {
     return { sentCount: 0, failedCount: 0 };
   }
@@ -2869,7 +2875,8 @@ function renderAdminMenuPage() {
           phoneNumberId: '',
           verifyToken: '',
           accessToken: '',
-          graphVersion: 'v25.0'
+          graphVersion: 'v25.0',
+          orderNotificationRecipients: ''
         };
       }
 
@@ -3247,6 +3254,8 @@ function renderAdminMenuPage() {
           '<div><label>Phone number ID</label><input type="text" data-whatsapp-connection-field="phoneNumberId" value="' + escapeHtml(connection.phoneNumberId || '') + '" placeholder="Meta phone number id" /></div>' +
           '<div><label>Verify token</label><input type="text" data-whatsapp-connection-field="verifyToken" value="' + escapeHtml(connection.verifyToken || '') + '" placeholder="Meta webhook verify token" /></div>' +
           '<div class="full"><label>Access token</label><input type="text" data-whatsapp-connection-field="accessToken" value="' + escapeHtml(connection.accessToken || '') + '" placeholder="Paste the Meta Cloud API access token" /></div>' +
+          '<div class="full field-group-title">Order alerts</div>' +
+          '<div class="full"><label>Paid order alert recipients</label><input type="text" data-whatsapp-connection-field="orderNotificationRecipients" value="' + escapeHtml(connection.orderNotificationRecipients || '') + '" placeholder="919900000001,919900000002" /><div class="micro-copy">These backend team numbers receive paid-order WhatsApp alerts. The WhatsApp number above is the sender; these are the recipients.</div></div>' +
           '<div class="full micro-copy">Graph version stays on the backend default unless you change it in code. Saved fields are used first for webhook verification and outbound sends.</div>';
       }
 
