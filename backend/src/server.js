@@ -1704,6 +1704,85 @@ function buildPickupConfirmationMessage(order) {
   return `Payment received ✅\n\nOrder: ${order.id}\nPickup code: ${order.pickupCode}\nTotal: ₹${order.total}\nShow this code at the ${pickupPoint}.`;
 }
 
+function getBackendOrderNotificationRecipients() {
+  return String(process.env.BACKEND_ORDER_WHATSAPP_RECIPIENTS || '')
+    .split(',')
+    .map((value) => normalizeWhatsAppRecipient(value))
+    .filter(Boolean);
+}
+
+function buildBackendOrderNotificationMessage(order) {
+  const outlet = getOutlet(order.outletId);
+  const branding = getBrandingForOutlet(order.outletId);
+  const itemLines = (order.items || [])
+    .map((item) => `- ${item.name} x ${item.qty} = ₹${item.lineTotal}`)
+    .join('\n');
+
+  return [
+    `New paid order for ${branding.brandName}`,
+    '',
+    `Outlet: ${outlet?.name || order.outletId}`,
+    `Order: ${order.id}`,
+    `Customer: ${order.customerMobile}`,
+    `Total: ₹${order.total}`,
+    `Pickup code: ${order.pickupCode}`,
+    '',
+    'Items:',
+    itemLines || '- No items found',
+    '',
+    `Payment: ${order.payment?.provider || order.paymentProvider || 'Payment gateway'} ${order.payment?.paymentReference ? `(${order.payment.paymentReference})` : ''}`.trim()
+  ].join('\n');
+}
+
+async function notifyBackendTeamOfPaidOrder(order) {
+  const recipients = getBackendOrderNotificationRecipients();
+  if (!recipients.length) {
+    return { sentCount: 0, failedCount: 0 };
+  }
+
+  const message = buildBackendOrderNotificationMessage(order);
+  let sentCount = 0;
+  let failedCount = 0;
+
+  for (const recipient of recipients) {
+    try {
+      await sendWhatsAppMessage(recipient, message, { outletId: order.outletId });
+      sentCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      logAuditEvent({
+        outletId: order.outletId,
+        action: 'BACKEND_ORDER_NOTIFICATION_FAILED',
+        entityType: 'order',
+        entityId: order.id,
+        summary: `Failed backend WhatsApp notification for order ${order.id}`,
+        actor: 'payment-webhook',
+        metadata: {
+          recipient,
+          error: error.message
+        }
+      });
+    }
+  }
+
+  if (sentCount > 0) {
+    logAuditEvent({
+      outletId: order.outletId,
+      action: 'BACKEND_ORDER_NOTIFICATION_SENT',
+      entityType: 'order',
+      entityId: order.id,
+      summary: `Sent backend WhatsApp notification for order ${order.id}`,
+      actor: 'payment-webhook',
+      metadata: {
+        sentCount,
+        failedCount
+      }
+    });
+  }
+
+  return { sentCount, failedCount };
+}
+
 export async function handleIncomingWhatsAppMessage(message) {
   const customerMobile = message?.from;
   if (!customerMobile) {
@@ -4499,7 +4578,23 @@ async function finalizePaidOrder(order, paymentUpdate = {}) {
   };
 
   await pushOrderToPetpooja(order);
-  await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order), { outletId: order.outletId });
+  try {
+    await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order), { outletId: order.outletId });
+  } catch (error) {
+    logAuditEvent({
+      outletId: order.outletId,
+      action: 'CUSTOMER_PAYMENT_CONFIRMATION_FAILED',
+      entityType: 'order',
+      entityId: order.id,
+      summary: `Failed customer WhatsApp payment confirmation for order ${order.id}`,
+      actor: 'payment-webhook',
+      metadata: {
+        customerMobile: order.customerMobile,
+        error: error.message
+      }
+    });
+  }
+  await notifyBackendTeamOfPaidOrder(order);
   order.flowState = ORDER_FLOW.PICKUP_CODE_SENT;
 
   persistOrders();
