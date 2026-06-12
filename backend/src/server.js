@@ -29,8 +29,34 @@ let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__d
 let whatsappConnectionsFile = process.env.WHATSAPP_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-connections.json');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 const APP_ENCRYPTION_KEY = String(process.env.APP_ENCRYPTION_KEY || '').trim();
+const NODE_ENV = String(process.env.NODE_ENV || '').trim().toLowerCase();
+const IS_PRODUCTION = NODE_ENV === 'production';
+const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || 'admin').trim();
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
+const ADMIN_AUTH_TOKEN = String(process.env.ADMIN_AUTH_TOKEN || '').trim();
+const ALLOW_PAYMENT_FALLBACK = String(process.env.ALLOW_PAYMENT_FALLBACK || '').trim().toLowerCase() === 'true';
+const CORS_ORIGIN = String(process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || '').trim();
+const allowedCorsOrigins = CORS_ORIGIN
+  .split(',')
+  .map((origin) => origin.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
 
-app.use(cors());
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    const normalizedOrigin = String(origin).trim().replace(/\/+$/, '');
+    if (!allowedCorsOrigins.length && !IS_PRODUCTION) {
+      callback(null, true);
+      return;
+    }
+
+    callback(null, allowedCorsOrigins.includes(normalizedOrigin));
+  }
+}));
 app.use(express.json({
   limit: '10mb',
   verify: (req, res, buffer) => {
@@ -38,6 +64,71 @@ app.use(express.json({
   }
 }));
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+function timingSafeStringEqual(leftValue, rightValue) {
+  const left = Buffer.from(String(leftValue || ''));
+  const right = Buffer.from(String(rightValue || ''));
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
+
+function getBasicAuthCredentials(req) {
+  const header = String(req.get('authorization') || '');
+  if (!header.toLowerCase().startsWith('basic ')) return null;
+
+  try {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
+    const separatorIndex = decoded.indexOf(':');
+    if (separatorIndex < 0) return null;
+    return {
+      username: decoded.slice(0, separatorIndex),
+      password: decoded.slice(separatorIndex + 1)
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isAdminRequestAuthorized(req) {
+  const bearerToken = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  const headerToken = String(req.get('x-admin-token') || '').trim();
+  if (ADMIN_AUTH_TOKEN && (
+    timingSafeStringEqual(bearerToken, ADMIN_AUTH_TOKEN) ||
+    timingSafeStringEqual(headerToken, ADMIN_AUTH_TOKEN)
+  )) {
+    return true;
+  }
+
+  const credentials = getBasicAuthCredentials(req);
+  return Boolean(
+    ADMIN_PASSWORD &&
+    credentials &&
+    timingSafeStringEqual(credentials.username, ADMIN_USERNAME) &&
+    timingSafeStringEqual(credentials.password, ADMIN_PASSWORD)
+  );
+}
+
+function requireAdminAuth(req, res, next) {
+  const authConfigured = Boolean(ADMIN_PASSWORD || ADMIN_AUTH_TOKEN);
+  if (!authConfigured && !IS_PRODUCTION) {
+    next();
+    return;
+  }
+
+  if (!authConfigured) {
+    res.status(503).json({ error: 'Admin authentication is not configured' });
+    return;
+  }
+
+  if (!isAdminRequestAuthorized(req)) {
+    res.setHeader('WWW-Authenticate', 'Basic realm="PikQuik Admin"');
+    res.status(401).json({ error: 'Admin authentication required' });
+    return;
+  }
+
+  next();
+}
+
+app.use(['/admin', '/api/admin'], requireAdminAuth);
 
 const sessions = new Map();
 const orders = new Map();
@@ -1512,7 +1603,8 @@ export function parseMenuSpreadsheet(base64Content) {
       }
       return '';
     };
-    const availableValue = String(getValue('available', 'is_available') || '').trim().toLowerCase();
+    const rawAvailableValue = getValue('available', 'is_available');
+    const availableValue = String(rawAvailableValue ?? '').trim().toLowerCase();
     return {
       id: getValue('id', 'item_id'),
       petpoojaItemId: getValue('petpoojaitemid', 'petpooja_item_id', 'petpooja_id'),
@@ -4331,6 +4423,9 @@ async function createRazorpayPaymentLink(order, connectionConfig) {
   const connection = connectionConfig.connection;
 
   if (!connection || connection.status !== 'ACTIVE') {
+    if (IS_PRODUCTION && !ALLOW_PAYMENT_FALLBACK) {
+      throw new Error('Live Razorpay connector is required before checkout can create a payment link');
+    }
     return {
       paymentLink: fallbackPaymentLink,
       provider: 'Razorpay',
@@ -4345,6 +4440,9 @@ async function createRazorpayPaymentLink(order, connectionConfig) {
   }
 
   if (!connection.apiKey || !connection.apiSecret || !paymentFetch) {
+    if (IS_PRODUCTION && !ALLOW_PAYMENT_FALLBACK) {
+      throw new Error(`Payment connector ${connection.name || connection.id} is missing live API credentials`);
+    }
     return {
       paymentLink: fallbackPaymentLink,
       provider: connection.provider,
@@ -4420,6 +4518,9 @@ async function createPaymentLinkForOrder(order) {
   const fallbackPaymentLink = `${getCustomerAppBaseUrl(order.outletId)}/success?orderId=${order.id}`;
 
   if (!connection || connection.status !== 'ACTIVE') {
+    if (IS_PRODUCTION && !ALLOW_PAYMENT_FALLBACK) {
+      throw new Error('An active live payment connector is required before checkout can create a payment link');
+    }
     return {
       paymentLink: fallbackPaymentLink,
       provider: order.paymentProvider || 'GENERIC',
@@ -4437,6 +4538,9 @@ async function createPaymentLinkForOrder(order) {
     case 'RAZORPAY':
       return createRazorpayPaymentLink(order, connectionConfig);
     default:
+      if (IS_PRODUCTION && !ALLOW_PAYMENT_FALLBACK) {
+        throw new Error(`Payment provider ${connection.provider} is not implemented for live checkout`);
+      }
       return {
         paymentLink: fallbackPaymentLink,
         provider: connection.provider,
@@ -4747,6 +4851,29 @@ function verifyRazorpayWebhookSignature(req) {
     !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
   ) {
     throw new Error('Invalid Razorpay signature');
+  }
+}
+
+function verifyMetaWebhookSignature(req) {
+  const appSecret = String(process.env.WHATSAPP_APP_SECRET || '').trim();
+  if (!appSecret) {
+    if (IS_PRODUCTION) {
+      throw new Error('WHATSAPP_APP_SECRET is not configured');
+    }
+    return;
+  }
+
+  const signature = String(req.get('x-hub-signature-256') || '').trim();
+  if (!signature.startsWith('sha256=')) {
+    throw new Error('Missing Meta webhook signature');
+  }
+
+  const expected = `sha256=${crypto
+    .createHmac('sha256', appSecret)
+    .update(req.rawBody || Buffer.from(''))
+    .digest('hex')}`;
+  if (!timingSafeStringEqual(signature, expected)) {
+    throw new Error('Invalid Meta webhook signature');
   }
 }
 
@@ -5264,6 +5391,11 @@ app.post('/api/admin/orders/:orderId/resend-confirmation', async (req, res) => {
 });
 
 app.post('/api/admin/payments/:orderId/simulate-paid', async (req, res) => {
+  if (IS_PRODUCTION && !ALLOW_PAYMENT_FALLBACK) {
+    res.status(403).json({ error: 'Manual payment simulation is disabled in production' });
+    return;
+  }
+
   try {
     const order = await markOrderPaid(req.params.orderId);
     logAuditEvent({
@@ -5382,6 +5514,7 @@ app.post('/api/verify-pickup', (req, res) => {
 
 app.post('/whatsapp/webhook', async (req, res) => {
   try {
+    verifyMetaWebhookSignature(req);
     const messages = extractWhatsAppEvents(req.body);
     for (const message of messages) {
       await handleIncomingWhatsAppMessage(message);
