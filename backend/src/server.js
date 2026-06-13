@@ -27,13 +27,16 @@ let paymentConnectionsFile = process.env.PAYMENT_CONNECTIONS_FILE || path.join(_
 let whatsappEventsFile = process.env.WHATSAPP_EVENTS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-events.json');
 let whatsappCampaignsFile = process.env.WHATSAPP_CAMPAIGNS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-campaigns.json');
 let whatsappConnectionsFile = process.env.WHATSAPP_CONNECTIONS_FILE || path.join(__dirname, '..', 'data', 'whatsapp-connections.json');
+let adminUsersFile = process.env.ADMIN_USERS_FILE || path.join(__dirname, '..', 'data', 'admin-users.json');
+let adminSessionsFile = process.env.ADMIN_SESSIONS_FILE || path.join(__dirname, '..', 'data', 'admin-sessions.json');
 const UPLOAD_DIR = process.env.UPLOAD_DIR || path.join(__dirname, '..', 'data', 'uploads');
 const APP_ENCRYPTION_KEY = String(process.env.APP_ENCRYPTION_KEY || '').trim();
 const NODE_ENV = String(process.env.NODE_ENV || '').trim().toLowerCase();
 const IS_PRODUCTION = NODE_ENV === 'production';
-const ADMIN_USERNAME = String(process.env.ADMIN_USERNAME || 'admin').trim();
-const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
 const ADMIN_AUTH_TOKEN = String(process.env.ADMIN_AUTH_TOKEN || '').trim();
+const ADMIN_SESSION_SECRET = String(process.env.ADMIN_SESSION_SECRET || process.env.SESSION_SECRET || APP_ENCRYPTION_KEY || '').trim();
+const ADMIN_SEED_EMAIL = String(process.env.ADMIN_SEED_EMAIL || process.env.ADMIN_USERNAME || '').trim().toLowerCase();
+const ADMIN_SEED_PASSWORD = String(process.env.ADMIN_SEED_PASSWORD || process.env.ADMIN_PASSWORD || '').trim();
 const ALLOW_PAYMENT_FALLBACK = String(process.env.ALLOW_PAYMENT_FALLBACK || '').trim().toLowerCase() === 'true';
 const CORS_ORIGIN = String(process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || '').trim();
 const allowedCorsOrigins = CORS_ORIGIN
@@ -71,44 +74,62 @@ function timingSafeStringEqual(leftValue, rightValue) {
   return left.length === right.length && crypto.timingSafeEqual(left, right);
 }
 
-function getBasicAuthCredentials(req) {
-  const header = String(req.get('authorization') || '');
-  if (!header.toLowerCase().startsWith('basic ')) return null;
-
-  try {
-    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf8');
-    const separatorIndex = decoded.indexOf(':');
-    if (separatorIndex < 0) return null;
-    return {
-      username: decoded.slice(0, separatorIndex),
-      password: decoded.slice(separatorIndex + 1)
-    };
-  } catch {
-    return null;
-  }
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }
 
-function isAdminRequestAuthorized(req) {
+function parseCookies(req) {
+  return String(req.get('cookie') || '')
+    .split(';')
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .reduce((cookies, part) => {
+      const separatorIndex = part.indexOf('=');
+      if (separatorIndex < 0) return cookies;
+      const key = decodeURIComponent(part.slice(0, separatorIndex).trim());
+      const value = decodeURIComponent(part.slice(separatorIndex + 1).trim());
+      return { ...cookies, [key]: value };
+    }, {});
+}
+
+function getAdminSessionToken(req) {
+  return parseCookies(req).pikquik_admin_session || '';
+}
+
+function getAdminUserForRequest(req) {
   const bearerToken = String(req.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
   const headerToken = String(req.get('x-admin-token') || '').trim();
   if (ADMIN_AUTH_TOKEN && (
     timingSafeStringEqual(bearerToken, ADMIN_AUTH_TOKEN) ||
     timingSafeStringEqual(headerToken, ADMIN_AUTH_TOKEN)
   )) {
-    return true;
+    return getPlatformSystemAdmin();
   }
 
-  const credentials = getBasicAuthCredentials(req);
-  return Boolean(
-    ADMIN_PASSWORD &&
-    credentials &&
-    timingSafeStringEqual(credentials.username, ADMIN_USERNAME) &&
-    timingSafeStringEqual(credentials.password, ADMIN_PASSWORD)
-  );
+  const token = getAdminSessionToken(req);
+  if (!token) return null;
+
+  const session = adminSessions.get(token);
+  if (!session || String(session.expiresAt || '').localeCompare(new Date().toISOString()) <= 0) {
+    if (session) {
+      adminSessions.delete(token);
+      persistAdminSessions();
+    }
+    return null;
+  }
+
+  const user = getAdminUser(session.userId);
+  if (!user || user.status !== 'ACTIVE') return null;
+  return user;
 }
 
 function requireAdminAuth(req, res, next) {
-  const authConfigured = Boolean(ADMIN_PASSWORD || ADMIN_AUTH_TOKEN);
+  const authConfigured = Boolean(adminUsers.length || ADMIN_AUTH_TOKEN);
   if (!authConfigured && !IS_PRODUCTION) {
     next();
     return;
@@ -119,14 +140,121 @@ function requireAdminAuth(req, res, next) {
     return;
   }
 
-  if (!isAdminRequestAuthorized(req)) {
-    res.setHeader('WWW-Authenticate', 'Basic realm="PikQuik Admin"');
-    res.status(401).json({ error: 'Admin authentication required' });
+  const user = getAdminUserForRequest(req);
+  if (!user) {
+    if (req.path.startsWith('/api/admin')) {
+      res.status(401).json({ error: 'Admin login required' });
+      return;
+    }
+    res.redirect('/admin/login');
     return;
   }
 
+  req.adminUser = user;
   next();
 }
+
+function requirePlatformAdmin(req, res, next) {
+  if (!isPlatformAdmin(req.adminUser)) {
+    res.status(403).json({ error: 'Platform admin access required' });
+    return;
+  }
+  next();
+}
+
+function requireOutletAccess(req, res, outletId) {
+  if (!canAccessOutlet(req.adminUser, outletId)) {
+    res.status(403).json({ error: 'Outlet access denied' });
+    return false;
+  }
+  return true;
+}
+
+function requireBrandAccess(req, res, brandId) {
+  if (!canAccessBrand(req.adminUser, brandId)) {
+    res.status(403).json({ error: 'Brand access denied' });
+    return false;
+  }
+  return true;
+}
+
+function setAdminSessionCookie(res, token, expiresAt) {
+  const secure = IS_PRODUCTION ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `pikquik_admin_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax${secure}; Expires=${new Date(expiresAt).toUTCString()}`);
+}
+
+function clearAdminSessionCookie(res) {
+  const secure = IS_PRODUCTION ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `pikquik_admin_session=; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=0`);
+}
+
+function renderAdminLoginPage(message = '') {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PikQuik Admin Login</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: "Avenir Next", "Aptos", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4efe6; color: #171411; }
+      form { width: min(420px, calc(100vw - 32px)); background: #fffdf8; border: 1px solid #ddd1bf; border-radius: 22px; box-shadow: 0 20px 50px rgba(28, 21, 12, 0.08); padding: 28px; box-sizing: border-box; }
+      h1 { margin: 0 0 8px; font-family: Georgia, serif; font-size: 34px; line-height: 1; }
+      p { margin: 0 0 22px; color: #6f675d; line-height: 1.5; }
+      label { display: block; margin: 14px 0 8px; font-weight: 700; font-size: 14px; }
+      input { width: 100%; box-sizing: border-box; border: 1px solid #ddd1bf; border-radius: 14px; padding: 13px 14px; font: inherit; }
+      button { width: 100%; margin-top: 20px; min-height: 46px; border: 0; border-radius: 999px; background: #0a6f5c; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+      .error { background: #fff0ef; color: #b1261d; border: 1px solid rgba(177, 38, 29, 0.18); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
+    </style>
+  </head>
+  <body>
+    <form method="post" action="/admin/login">
+      <h1>Admin Login</h1>
+      <p>Sign in with your platform or brand admin account.</p>
+      ${message ? `<div class="error">${escapeHtml(message)}</div>` : ''}
+      <label for="email">Email</label>
+      <input id="email" name="email" type="text" autocomplete="username" required />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required />
+      <button type="submit">Sign in</button>
+    </form>
+  </body>
+</html>`;
+}
+
+app.use(express.urlencoded({ extended: false }));
+
+app.get('/admin/login', (req, res) => {
+  if (getAdminUserForRequest(req)) {
+    res.redirect('/admin/menu');
+    return;
+  }
+  res.type('html').send(renderAdminLoginPage());
+});
+
+app.post('/admin/login', (req, res) => {
+  try {
+    const user = verifyAdminLogin(req.body?.email, req.body?.password);
+    if (!user) {
+      res.status(401).type('html').send(renderAdminLoginPage('Invalid email or password'));
+      return;
+    }
+    const session = createAdminSession(user.id);
+    setAdminSessionCookie(res, session.token, session.expiresAt);
+    res.redirect('/admin/menu');
+  } catch (error) {
+    res.status(401).json({ error: 'Admin authentication required' });
+  }
+});
+
+app.post('/admin/logout', (req, res) => {
+  const token = getAdminSessionToken(req);
+  if (token) {
+    adminSessions.delete(token);
+    persistAdminSessions();
+  }
+  clearAdminSessionCookie(res);
+  res.redirect('/admin/login');
+});
 
 app.use(['/admin', '/api/admin'], requireAdminAuth);
 
@@ -201,6 +329,302 @@ const defaultWhatsAppConnection = {
   orderNotificationRecipients: ''
 };
 const defaultWhatsAppConnections = [];
+
+const ADMIN_ROLES = {
+  PLATFORM_ADMIN: 'PLATFORM_ADMIN',
+  BRAND_ADMIN: 'BRAND_ADMIN',
+  OUTLET_MANAGER: 'OUTLET_MANAGER'
+};
+const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 12;
+
+function hashAdminPassword(password) {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const iterations = 210000;
+  const hash = crypto.pbkdf2Sync(String(password || ''), salt, iterations, 32, 'sha256').toString('hex');
+  return `pbkdf2:${iterations}:${salt}:${hash}`;
+}
+
+function verifyAdminPassword(password, storedHash) {
+  const parts = String(storedHash || '').split(':');
+  if (parts.length !== 4 || parts[0] !== 'pbkdf2') return false;
+  const [, iterationsValue, salt, expectedHash] = parts;
+  const iterations = Number(iterationsValue);
+  if (!Number.isFinite(iterations) || !salt || !expectedHash) return false;
+  const actualHash = crypto.pbkdf2Sync(String(password || ''), salt, iterations, 32, 'sha256').toString('hex');
+  return timingSafeStringEqual(actualHash, expectedHash);
+}
+
+function normalizeAdminUser(user, index = 0) {
+  const source = user && typeof user === 'object' ? user : {};
+  const role = String(source.role || ADMIN_ROLES.BRAND_ADMIN).trim().toUpperCase();
+  const normalized = {
+    id: String(source.id || '').trim() || `admin_user_${index + 1}`,
+    email: String(source.email || source.username || '').trim().toLowerCase(),
+    name: String(source.name || source.email || source.username || '').trim(),
+    role: Object.values(ADMIN_ROLES).includes(role) ? role : ADMIN_ROLES.BRAND_ADMIN,
+    status: String(source.status || 'ACTIVE').trim().toUpperCase(),
+    brandIds: Array.isArray(source.brandIds) ? source.brandIds.map((value) => String(value).trim()).filter(Boolean) : [],
+    outletIds: Array.isArray(source.outletIds) ? source.outletIds.map((value) => String(value).trim()).filter(Boolean) : [],
+    passwordHash: String(source.passwordHash || '').trim(),
+    createdAt: String(source.createdAt || new Date().toISOString()).trim(),
+    updatedAt: String(source.updatedAt || source.createdAt || new Date().toISOString()).trim()
+  };
+
+  if (!normalized.email) throw new Error(`Admin user at index ${index} is missing email`);
+  if (!normalized.passwordHash) throw new Error(`Admin user ${normalized.email} is missing password hash`);
+  if (!['ACTIVE', 'INACTIVE'].includes(normalized.status)) {
+    throw new Error(`Admin user ${normalized.email} has invalid status`);
+  }
+
+  return normalized;
+}
+
+function normalizeAdminUsers(rawUsers) {
+  if (!Array.isArray(rawUsers)) {
+    throw new Error('Admin users must be an array');
+  }
+
+  const seenEmails = new Set();
+  return rawUsers.map((user, index) => {
+    const normalized = normalizeAdminUser(user, index);
+    if (seenEmails.has(normalized.email)) {
+      throw new Error(`Duplicate admin user email: ${normalized.email}`);
+    }
+    seenEmails.add(normalized.email);
+    return normalized;
+  });
+}
+
+function buildSeedAdminUsers() {
+  if (!ADMIN_SEED_EMAIL || !ADMIN_SEED_PASSWORD) return [];
+  return normalizeAdminUsers([{
+    id: `admin_${ADMIN_SEED_EMAIL.replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'platform'}`,
+    email: ADMIN_SEED_EMAIL,
+    name: 'Platform Admin',
+    role: ADMIN_ROLES.PLATFORM_ADMIN,
+    status: 'ACTIVE',
+    brandIds: [],
+    outletIds: [],
+    passwordHash: hashAdminPassword(ADMIN_SEED_PASSWORD),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }]);
+}
+
+function loadAdminUsersFromDisk() {
+  try {
+    const raw = readFileSync(adminUsersFile, 'utf8');
+    return normalizeAdminUsers(JSON.parse(raw));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load admin users, using seed users instead.', error.message);
+    }
+    const seedUsers = buildSeedAdminUsers();
+    if (seedUsers.length) {
+      persistAdminUsers(seedUsers);
+    }
+    return seedUsers;
+  }
+}
+
+function persistAdminUsers(nextUsers = adminUsers) {
+  mkdirSync(path.dirname(adminUsersFile), { recursive: true });
+  writeFileSync(adminUsersFile, JSON.stringify(nextUsers, null, 2));
+}
+
+function normalizeAdminSession(entry) {
+  const source = entry && typeof entry === 'object' ? entry : {};
+  return {
+    token: String(source.token || '').trim(),
+    userId: String(source.userId || '').trim(),
+    createdAt: String(source.createdAt || new Date().toISOString()).trim(),
+    expiresAt: String(source.expiresAt || '').trim()
+  };
+}
+
+function loadAdminSessionsFromDisk() {
+  try {
+    const raw = readFileSync(adminSessionsFile, 'utf8');
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) throw new Error('Admin sessions must be an array');
+    const now = new Date().toISOString();
+    return new Map(parsed
+      .map(normalizeAdminSession)
+      .filter((session) => session.token && session.userId && session.expiresAt.localeCompare(now) > 0)
+      .map((session) => [session.token, session]));
+  } catch (error) {
+    if (error.code !== 'ENOENT') {
+      console.warn('Failed to load admin sessions, using empty sessions instead.', error.message);
+    }
+    return new Map();
+  }
+}
+
+function persistAdminSessions() {
+  mkdirSync(path.dirname(adminSessionsFile), { recursive: true });
+  writeFileSync(adminSessionsFile, JSON.stringify([...adminSessions.values()], null, 2));
+}
+
+function getAdminUser(userId) {
+  return adminUsers.find((user) => user.id === userId) || null;
+}
+
+function getPlatformSystemAdmin() {
+  return {
+    id: 'platform_api_token',
+    email: 'platform-api-token',
+    name: 'Platform API Token',
+    role: ADMIN_ROLES.PLATFORM_ADMIN,
+    status: 'ACTIVE',
+    brandIds: [],
+    outletIds: []
+  };
+}
+
+function verifyAdminLogin(email, password) {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const user = adminUsers.find((candidate) => candidate.email === normalizedEmail);
+  if (!user || user.status !== 'ACTIVE') return null;
+  if (!verifyAdminPassword(password, user.passwordHash)) return null;
+  return user;
+}
+
+function createAdminSession(userId) {
+  const token = nanoid(48);
+  const session = {
+    token,
+    userId,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + ADMIN_SESSION_TTL_MS).toISOString()
+  };
+  adminSessions.set(token, session);
+  persistAdminSessions();
+  return session;
+}
+
+function isPlatformAdmin(user) {
+  return user?.role === ADMIN_ROLES.PLATFORM_ADMIN;
+}
+
+function getAuthorizedBrandIds(user) {
+  if (isPlatformAdmin(user)) return brands.map((brand) => brand.id);
+  const brandIds = new Set(Array.isArray(user?.brandIds) ? user.brandIds : []);
+  (Array.isArray(user?.outletIds) ? user.outletIds : []).forEach((outletId) => {
+    const outlet = outlets.find((item) => item.id === outletId);
+    if (outlet?.brandId) brandIds.add(outlet.brandId);
+  });
+  return [...brandIds];
+}
+
+function getAuthorizedOutletIds(user) {
+  if (isPlatformAdmin(user)) return outlets.map((outlet) => outlet.id);
+  const brandIds = new Set(getAuthorizedBrandIds(user));
+  const outletIds = new Set(Array.isArray(user?.outletIds) ? user.outletIds : []);
+  outlets.forEach((outlet) => {
+    if (brandIds.has(outlet.brandId)) outletIds.add(outlet.id);
+  });
+  return [...outletIds];
+}
+
+function canAccessBrand(user, brandId) {
+  if (isPlatformAdmin(user)) return true;
+  return getAuthorizedBrandIds(user).includes(String(brandId || '').trim());
+}
+
+function canAccessOutlet(user, outletId) {
+  if (isPlatformAdmin(user)) return true;
+  return getAuthorizedOutletIds(user).includes(String(outletId || '').trim());
+}
+
+function getScopedBrandsForAdmin(user) {
+  const authorizedBrandIds = new Set(getAuthorizedBrandIds(user));
+  return brands.filter((brand) => authorizedBrandIds.has(brand.id));
+}
+
+function getScopedOutletsForAdmin(user) {
+  const authorizedOutletIds = new Set(getAuthorizedOutletIds(user));
+  return outlets.filter((outlet) => authorizedOutletIds.has(outlet.id));
+}
+
+function sanitizeAdminUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    status: user.status,
+    brandIds: user.brandIds || [],
+    outletIds: user.outletIds || [],
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
+}
+
+function sanitizePetpoojaConnection(connection) {
+  return {
+    ...connection,
+    accessToken: '',
+    appKey: '',
+    appSecret: ''
+  };
+}
+
+function sanitizePaymentConnection(connection) {
+  return {
+    ...connection,
+    apiKey: '',
+    apiSecret: '',
+    webhookSecret: ''
+  };
+}
+
+function sanitizeWhatsAppConnection(connection) {
+  return {
+    ...connection,
+    verifyToken: '',
+    accessToken: ''
+  };
+}
+
+function replaceAdminUsers(nextUsers, { persist = true } = {}) {
+  const normalizedUsers = normalizeAdminUsers(nextUsers);
+  if (!normalizedUsers.some((user) => user.role === ADMIN_ROLES.PLATFORM_ADMIN && user.status === 'ACTIVE')) {
+    throw new Error('At least one active platform admin is required');
+  }
+  adminUsers = normalizedUsers;
+  if (persist) persistAdminUsers(normalizedUsers);
+  return normalizedUsers;
+}
+
+function upsertAdminUsersFromPayload(rawUsers) {
+  if (!Array.isArray(rawUsers)) {
+    throw new Error('Admin users must be an array');
+  }
+
+  const existingById = new Map(adminUsers.map((user) => [user.id, user]));
+  const now = new Date().toISOString();
+  const nextUsers = rawUsers.map((rawUser, index) => {
+    const id = String(rawUser?.id || '').trim() || `admin_${nanoid(10)}`;
+    const existing = existingById.get(id);
+    const password = String(rawUser?.password || '').trim();
+    if (!existing && !password) {
+      throw new Error(`Password is required for new admin user at index ${index}`);
+    }
+    return {
+      id,
+      email: String(rawUser?.email || existing?.email || '').trim().toLowerCase(),
+      name: String(rawUser?.name || existing?.name || rawUser?.email || '').trim(),
+      role: String(rawUser?.role || existing?.role || ADMIN_ROLES.BRAND_ADMIN).trim().toUpperCase(),
+      status: String(rawUser?.status || existing?.status || 'ACTIVE').trim().toUpperCase(),
+      brandIds: Array.isArray(rawUser?.brandIds) ? rawUser.brandIds : (existing?.brandIds || []),
+      outletIds: Array.isArray(rawUser?.outletIds) ? rawUser.outletIds : (existing?.outletIds || []),
+      passwordHash: password ? hashAdminPassword(password) : existing.passwordHash,
+      createdAt: existing?.createdAt || now,
+      updatedAt: now
+    };
+  });
+  return replaceAdminUsers(nextUsers);
+}
 
 const defaultMenu = [
   {
@@ -313,6 +737,8 @@ let auditLogsByOutlet = loadAuditLogsFromDisk();
 let whatsappEvents = loadWhatsAppEventsFromDisk();
 let whatsappCampaigns = loadWhatsAppCampaignsFromDisk();
 let whatsappConnections = loadWhatsAppConnectionsFromDisk();
+let adminUsers = loadAdminUsersFromDisk();
+let adminSessions = loadAdminSessionsFromDisk();
 loadRuntimeStoresFromDisk();
 
 function normalizeBrands(rawBrands) {
@@ -2531,6 +2957,9 @@ function renderAdminMenuPage() {
         <p>Weborder Console</p>
         <h1>Brand, outlet, and menu operations</h1>
         <p>Manage branded ordering surfaces, outlet configuration, menus, payments, and WhatsApp journeys from one polished operational console.</p>
+        <form method="post" action="/admin/logout" style="position:relative; z-index:1; margin-top:18px;">
+          <button class="secondary" type="submit">Log out</button>
+        </form>
       </section>
 
       <nav class="section-nav" aria-label="Admin setup sections">
@@ -5045,29 +5474,69 @@ app.get('/api/showcase', (req, res) => {
   });
 });
 
+app.get('/api/admin/me', (req, res) => {
+  const user = req.adminUser;
+  res.json({
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      brandIds: getAuthorizedBrandIds(user),
+      outletIds: getAuthorizedOutletIds(user)
+    }
+  });
+});
+
+app.get('/api/admin/users', requirePlatformAdmin, (req, res) => {
+  res.json({
+    users: adminUsers.map(sanitizeAdminUser),
+    roles: Object.values(ADMIN_ROLES)
+  });
+});
+
+app.post('/api/admin/users', requirePlatformAdmin, (req, res) => {
+  try {
+    const nextUsers = upsertAdminUsersFromPayload(req.body?.users);
+    res.json({ ok: true, users: nextUsers.map(sanitizeAdminUser) });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.get('/api/admin/outlets', (req, res) => {
-  res.json({ outlets: getOutlets() });
+  res.json({ outlets: getScopedOutletsForAdmin(req.adminUser) });
 });
 
 app.get('/api/admin/brands', (req, res) => {
-  res.json({ brands: getBrands() });
+  res.json({ brands: getScopedBrandsForAdmin(req.adminUser) });
 });
 
 app.get('/api/admin/petpooja-connections', (req, res) => {
-  res.json({ connections: getPetpoojaConnections() });
+  const connections = getPetpoojaConnections();
+  res.json({ connections: isPlatformAdmin(req.adminUser) ? connections : connections.map(sanitizePetpoojaConnection) });
 });
 
 app.get('/api/admin/payment-connections', (req, res) => {
-  res.json({ connections: getPaymentConnections() });
+  const connections = getPaymentConnections();
+  res.json({ connections: isPlatformAdmin(req.adminUser) ? connections : connections.map(sanitizePaymentConnection) });
 });
 
 app.get('/api/admin/whatsapp-connections', (req, res) => {
-  res.json({ connections: getWhatsAppConnections() });
+  const connections = getWhatsAppConnections();
+  res.json({ connections: isPlatformAdmin(req.adminUser) ? connections : connections.map(sanitizeWhatsAppConnection) });
 });
 
 app.post('/api/admin/brands', (req, res) => {
   try {
-    const nextBrands = replaceBrands(req.body?.brands);
+    const requestedBrands = Array.isArray(req.body?.brands) ? req.body.brands : [];
+    if (!isPlatformAdmin(req.adminUser) && requestedBrands.some((brand) => !canAccessBrand(req.adminUser, brand?.id))) {
+      res.status(403).json({ error: 'Brand access denied' });
+      return;
+    }
+    const nextBrands = isPlatformAdmin(req.adminUser)
+      ? replaceBrands(requestedBrands)
+      : replaceBrands(brands.map((brand) => requestedBrands.find((candidate) => candidate.id === brand.id) || brand));
     nextBrands.forEach((brand) => {
       logAuditEvent({
         outletId: null,
@@ -5075,7 +5544,7 @@ app.post('/api/admin/brands', (req, res) => {
         entityType: 'brand',
         entityId: brand.id,
         summary: `Saved brand configuration for ${brand.name}`,
-        actor: 'admin-ui',
+        actor: req.adminUser?.email || 'admin-ui',
         metadata: {
           customerAppBaseUrl: brand.customerAppBaseUrl
         }
@@ -5088,6 +5557,10 @@ app.post('/api/admin/brands', (req, res) => {
 });
 
 app.post('/api/admin/petpooja-connections', (req, res) => {
+  if (!isPlatformAdmin(req.adminUser)) {
+    res.status(403).json({ error: 'Platform admin access required to manage shared Petpooja connectors' });
+    return;
+  }
   try {
     const nextConnections = replacePetpoojaConnections(req.body?.connections);
     res.json({ ok: true, connections: nextConnections });
@@ -5097,6 +5570,10 @@ app.post('/api/admin/petpooja-connections', (req, res) => {
 });
 
 app.post('/api/admin/payment-connections', (req, res) => {
+  if (!isPlatformAdmin(req.adminUser)) {
+    res.status(403).json({ error: 'Platform admin access required to manage shared payment connectors' });
+    return;
+  }
   try {
     const nextConnections = replacePaymentConnections(req.body?.connections);
     nextConnections.forEach((connection) => {
@@ -5106,7 +5583,7 @@ app.post('/api/admin/payment-connections', (req, res) => {
         entityType: 'payment_connector',
         entityId: connection.id,
         summary: `Saved payment connector ${connection.name}`,
-        actor: 'admin-ui',
+        actor: req.adminUser?.email || 'admin-ui',
         metadata: {
           provider: connection.provider,
           status: connection.status,
@@ -5122,6 +5599,10 @@ app.post('/api/admin/payment-connections', (req, res) => {
 });
 
 app.post('/api/admin/whatsapp-connections', (req, res) => {
+  if (!isPlatformAdmin(req.adminUser)) {
+    res.status(403).json({ error: 'Platform admin access required to manage shared WhatsApp connectors' });
+    return;
+  }
   try {
     const nextConnections = replaceWhatsAppConnections(req.body?.connections);
     nextConnections.forEach((connection) => {
@@ -5131,7 +5612,7 @@ app.post('/api/admin/whatsapp-connections', (req, res) => {
         entityType: 'whatsapp_connector',
         entityId: connection.id,
         summary: `Saved WhatsApp connector ${connection.name}`,
-        actor: 'admin-ui',
+        actor: req.adminUser?.email || 'admin-ui',
         metadata: {
           status: connection.status,
           phoneNumber: connection.phoneNumber,
@@ -5148,7 +5629,14 @@ app.post('/api/admin/whatsapp-connections', (req, res) => {
 
 app.post('/api/admin/outlets', (req, res) => {
   try {
-    const nextOutlets = replaceOutlets(req.body?.outlets);
+    const requestedOutlets = Array.isArray(req.body?.outlets) ? req.body.outlets : [];
+    if (!isPlatformAdmin(req.adminUser) && requestedOutlets.some((outlet) => !canAccessOutlet(req.adminUser, outlet?.id))) {
+      res.status(403).json({ error: 'Outlet access denied' });
+      return;
+    }
+    const nextOutlets = isPlatformAdmin(req.adminUser)
+      ? replaceOutlets(requestedOutlets)
+      : replaceOutlets(outlets.map((outlet) => requestedOutlets.find((candidate) => candidate.id === outlet.id) || outlet));
     nextOutlets.forEach((outlet) => {
       logAuditEvent({
         outletId: outlet.id,
@@ -5156,7 +5644,7 @@ app.post('/api/admin/outlets', (req, res) => {
         entityType: 'outlet',
         entityId: outlet.id,
         summary: `Saved outlet configuration for ${outlet.name}`,
-        actor: 'admin-ui',
+        actor: req.adminUser?.email || 'admin-ui',
         metadata: {
           status: outlet.status,
           paymentProvider: outlet.paymentProvider,
@@ -5172,27 +5660,42 @@ app.post('/api/admin/outlets', (req, res) => {
 
 app.get('/api/admin/menu', (req, res) => {
   const outletId = String(req.query.outletId || getDefaultOutletId());
+  if (!requireOutletAccess(req, res, outletId)) return;
   res.json({ outletId, menu: getMenu({ includeUnavailable: true, outletId }) });
 });
 
 app.get('/api/admin/orders', (req, res) => {
   const outletId = String(req.query.outletId || '');
-  res.json({ orders: listOrdersByOutlet(outletId) });
+  if (outletId) {
+    if (!requireOutletAccess(req, res, outletId)) return;
+    res.json({ orders: listOrdersByOutlet(outletId) });
+    return;
+  }
+  const authorizedOutletIds = new Set(getAuthorizedOutletIds(req.adminUser));
+  res.json({ orders: listOrdersByOutlet('').filter((order) => authorizedOutletIds.has(order.outletId)) });
 });
 
 app.get('/api/admin/marketing/audience', (req, res) => {
   const outletId = String(req.query.outletId || getDefaultOutletId());
+  if (!requireOutletAccess(req, res, outletId)) return;
   res.json({ audience: listAudienceByOutlet(outletId) });
 });
 
 app.get('/api/admin/whatsapp-campaigns', (req, res) => {
   const outletId = String(req.query.outletId || '');
-  res.json({ campaigns: listWhatsAppCampaigns(outletId) });
+  if (outletId) {
+    if (!requireOutletAccess(req, res, outletId)) return;
+    res.json({ campaigns: listWhatsAppCampaigns(outletId) });
+    return;
+  }
+  const authorizedOutletIds = new Set(getAuthorizedOutletIds(req.adminUser));
+  res.json({ campaigns: listWhatsAppCampaigns('').filter((campaign) => authorizedOutletIds.has(campaign.outletId)) });
 });
 
 app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
   try {
     const outletId = String(req.body?.outletId || getDefaultOutletId()).trim();
+    if (!requireOutletAccess(req, res, outletId)) return;
     const outlet = getOutlet(outletId);
     if (!outlet) throw new Error('Outlet not found');
 
@@ -5220,7 +5723,7 @@ app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
           entityType: 'whatsapp_campaign',
           entityId: recipient,
           summary: `Failed WhatsApp campaign send to ${recipient}`,
-          actor: 'admin-ui',
+          actor: req.adminUser?.email || 'admin-ui',
           metadata: { error: error.message, imageUrl }
         });
       }
@@ -5236,7 +5739,7 @@ app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
       sentCount,
       failedCount,
       createdAt: new Date().toISOString(),
-      createdBy: 'admin-ui'
+      createdBy: req.adminUser?.email || 'admin-ui'
     });
     whatsappCampaigns = [campaign, ...whatsappCampaigns].slice(0, 100);
     persistWhatsAppCampaigns();
@@ -5247,7 +5750,7 @@ app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
       entityType: 'whatsapp_campaign',
       entityId: campaign.id,
       summary: `Sent WhatsApp image campaign to ${sentCount} recipients`,
-      actor: 'admin-ui',
+      actor: req.adminUser?.email || 'admin-ui',
       metadata: {
         imageUrl,
         sentCount,
@@ -5263,12 +5766,19 @@ app.post('/api/admin/whatsapp-campaigns/send', async (req, res) => {
 
 app.get('/api/admin/payments', (req, res) => {
   const outletId = String(req.query.outletId || '');
-  res.json({ payments: listPaymentsByOutlet(outletId) });
+  if (outletId) {
+    if (!requireOutletAccess(req, res, outletId)) return;
+    res.json({ payments: listPaymentsByOutlet(outletId) });
+    return;
+  }
+  const authorizedOutletIds = new Set(getAuthorizedOutletIds(req.adminUser));
+  res.json({ payments: listPaymentsByOutlet('').filter((payment) => authorizedOutletIds.has(payment.outletId)) });
 });
 
 app.get('/api/admin/menu/images', (req, res) => {
   try {
     const outletId = String(req.query.outletId || getDefaultOutletId());
+    if (!requireOutletAccess(req, res, outletId)) return;
     res.json({ images: getUploadedImagesByOutlet(outletId) });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -5278,6 +5788,7 @@ app.get('/api/admin/menu/images', (req, res) => {
 app.get('/api/admin/audit-logs', (req, res) => {
   try {
     const outletId = String(req.query.outletId || getDefaultOutletId());
+    if (!requireOutletAccess(req, res, outletId)) return;
     res.json({ entries: listAuditLogsByOutlet(outletId) });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -5328,7 +5839,9 @@ app.post('/api/admin/menu/parse-spreadsheet', (req, res) => {
 
 app.post('/api/admin/menu/pull-from-petpooja', async (req, res) => {
   try {
-    const pulledMenu = await pullMenuFromPetpooja(req.body?.outletId);
+    const outletId = String(req.body?.outletId || getDefaultOutletId());
+    if (!requireOutletAccess(req, res, outletId)) return;
+    const pulledMenu = await pullMenuFromPetpooja(outletId);
     res.json({ ok: true, ...pulledMenu });
   } catch (error) {
     res.status(400).json({ error: error.message });
@@ -5349,6 +5862,7 @@ app.post('/api/admin/menu/upload-image', (req, res) => {
 
     try {
       const outletId = getValidatedOutletId(req.query?.outletId);
+      if (!requireOutletAccess(req, res, outletId)) return;
       const imageUrl = `${getPublicBaseUrl(req)}/uploads/${encodeURIComponent(outletId)}/${encodeURIComponent(req.file.filename)}`;
       const image = recordUploadedImage({
         outletId,
@@ -5357,7 +5871,7 @@ app.post('/api/admin/menu/upload-image', (req, res) => {
         originalName: req.file.originalname,
         mimeType: req.file.mimetype,
         size: req.file.size,
-        uploadedBy: 'admin-ui'
+        uploadedBy: req.adminUser?.email || 'admin-ui'
       });
       res.json({ ok: true, imageUrl, image });
     } catch (uploadError) {
@@ -5370,6 +5884,7 @@ app.post('/api/admin/orders/:orderId/resend-confirmation', async (req, res) => {
   try {
     const order = orders.get(req.params.orderId);
     if (!order) return res.status(404).json({ error: 'Order not found' });
+    if (!requireOutletAccess(req, res, order.outletId)) return;
     if (order.paymentStatus !== 'PAID') return res.status(400).json({ error: 'Order is not paid yet' });
 
     await sendWhatsAppMessage(order.customerMobile, buildPickupConfirmationMessage(order), { outletId: order.outletId });
@@ -5379,7 +5894,7 @@ app.post('/api/admin/orders/:orderId/resend-confirmation', async (req, res) => {
       entityType: 'order',
       entityId: order.id,
       summary: `Resent WhatsApp confirmation for order ${order.id}`,
-      actor: 'admin-ui',
+      actor: req.adminUser?.email || 'admin-ui',
       metadata: {
         customerMobile: order.customerMobile
       }
@@ -5397,6 +5912,9 @@ app.post('/api/admin/payments/:orderId/simulate-paid', async (req, res) => {
   }
 
   try {
+    const existingOrder = orders.get(req.params.orderId);
+    if (!existingOrder) return res.status(404).json({ error: 'Order not found' });
+    if (!requireOutletAccess(req, res, existingOrder.outletId)) return;
     const order = await markOrderPaid(req.params.orderId);
     logAuditEvent({
       outletId: order.outletId,
@@ -5404,7 +5922,7 @@ app.post('/api/admin/payments/:orderId/simulate-paid', async (req, res) => {
       entityType: 'payment',
       entityId: order.id,
       summary: `Marked payment as paid for order ${order.id}`,
-      actor: 'admin-ui',
+      actor: req.adminUser?.email || 'admin-ui',
       metadata: {
         paymentStatus: order.paymentStatus,
         paymentReference: order.payment?.paymentReference || null
@@ -5419,6 +5937,7 @@ app.post('/api/admin/payments/:orderId/simulate-paid', async (req, res) => {
 app.post('/api/admin/menu', (req, res) => {
   try {
     const outletId = String(req.body?.outletId || getDefaultOutletId());
+    if (!requireOutletAccess(req, res, outletId)) return;
     const nextMenu = replaceMenu(req.body?.menu, { outletId });
     logAuditEvent({
       outletId,
@@ -5426,7 +5945,7 @@ app.post('/api/admin/menu', (req, res) => {
       entityType: 'menu',
       entityId: outletId,
       summary: `Saved menu for outlet ${outletId}`,
-      actor: 'admin-ui',
+      actor: req.adminUser?.email || 'admin-ui',
       metadata: {
         itemCount: nextMenu.length
       }
