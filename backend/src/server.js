@@ -3140,14 +3140,14 @@ function renderAdminMenuPage() {
         </div>
         <div class="grid">
           <section class="panel">
-            <h2>Brands</h2>
-            <p class="hint">Keep this section simple: brand name, optional logo, tag line, and the app URL used in customer-facing links.</p>
-            <label for="brand-select">Current Brand</label>
+            <h2 id="brand-panel-title">Brand Profile</h2>
+            <p class="hint" id="brand-panel-hint">Your workspace was created from signup. Review these details only when your brand profile or customer app URL changes.</p>
+            <label for="brand-select" id="brand-select-label">Current Brand</label>
             <select id="brand-select"></select>
-            <div class="actions">
+            <div class="actions" id="brand-actions">
               <button class="secondary" id="add-brand" type="button">Add brand</button>
               <button class="secondary" id="remove-brand" type="button">Remove brand</button>
-              <button class="primary" id="save-brands" type="button">Save brands</button>
+              <button class="primary" id="save-brands" type="button">Save Brand Profile</button>
             </div>
             <div id="brand-status" class="status"></div>
             <div id="brand-form" class="outlet-grid"></div>
@@ -3409,8 +3409,12 @@ function renderAdminMenuPage() {
       const paymentConnectionSelect = document.getElementById('payment-connection-select');
       const paymentConnectionForm = document.getElementById('payment-connection-form');
       const paymentAssignmentForm = document.getElementById('payment-assignment-form');
+      const brandPanelTitle = document.getElementById('brand-panel-title');
+      const brandPanelHint = document.getElementById('brand-panel-hint');
+      const brandSelectLabel = document.getElementById('brand-select-label');
       const brandSelect = document.getElementById('brand-select');
       const brandForm = document.getElementById('brand-form');
+      const brandActions = document.getElementById('brand-actions');
       const outletSelectWrap = document.getElementById('outlet-select-wrap');
       const outletSelectEmpty = document.getElementById('outlet-select-empty');
       const outletSelect = document.getElementById('outlet-select');
@@ -3460,6 +3464,7 @@ function renderAdminMenuPage() {
       let outletState = [];
       let whatsappConnectionState = [];
       let marketingAudienceState = [];
+      let currentAdminUser = null;
       const selectedMarketingRecipients = new Set();
 
       function defaultItem() {
@@ -3607,6 +3612,33 @@ function renderAdminMenuPage() {
       function setMarketingStatus(message, type) {
         marketingStatusBox.textContent = message;
         marketingStatusBox.className = message ? 'status show ' + type : 'status';
+      }
+
+      function isPlatformAdminUser() {
+        return currentAdminUser?.role === 'PLATFORM_ADMIN';
+      }
+
+      async function loadAdminProfile() {
+        const res = await fetch('/api/admin/me');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Could not load admin profile');
+        currentAdminUser = data.user || null;
+        applyBrandProfileMode();
+      }
+
+      function applyBrandProfileMode() {
+        const platformAdmin = isPlatformAdminUser();
+        brandPanelTitle.textContent = platformAdmin ? 'Brands' : 'Brand Profile';
+        brandPanelHint.textContent = platformAdmin
+          ? 'Manage brand workspaces. Each brand can then edit its own profile after signup.'
+          : 'Created during signup. Edit only if your brand name, tag line, logo, or customer app URL changes.';
+        saveBrandsButton.textContent = platformAdmin ? 'Save Brands' : 'Save Brand Profile';
+        addBrandButton.style.display = platformAdmin ? '' : 'none';
+        removeBrandButton.style.display = platformAdmin ? '' : 'none';
+        const showBrandSelector = platformAdmin || brandState.length > 1;
+        brandSelect.style.display = showBrandSelector ? '' : 'none';
+        brandSelectLabel.style.display = showBrandSelector ? '' : 'none';
+        brandActions.classList.toggle('single-action', !platformAdmin);
       }
 
       async function uploadImageFile(file) {
@@ -4075,6 +4107,7 @@ function renderAdminMenuPage() {
         const data = await res.json();
         brandState = data.brands || [];
         renderBrandSelector();
+        applyBrandProfileMode();
         renderBrandForm(0);
         renderPaymentAssignments();
         renderWhatsAppAssignments();
@@ -4968,7 +5001,8 @@ function renderAdminMenuPage() {
         }
       });
 
-      loadBrands()
+      loadAdminProfile()
+        .then(() => loadBrands())
         .then(() => loadPetpoojaConnections())
         .then(() => loadPaymentConnections())
         .then(() => loadWhatsAppConnections())
