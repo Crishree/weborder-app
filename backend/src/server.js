@@ -5014,6 +5014,11 @@ function renderAdminMenuPage() {
 
       // Render Petpooja credentials immediately so the setup form is visible
       // even before the async admin data load completes.
+      brandState = [defaultBrand()];
+      renderBrandSelector();
+      applyBrandProfileMode();
+      renderBrandForm(0);
+      setBrandStatus('Add your brand profile to continue. The app URL will auto-fill from the brand name.', 'ok');
       petpoojaConnectionState = [defaultPetpoojaConnection()];
       renderPetpoojaConnectionSelector();
       renderPetpoojaConnectionForm(0);
@@ -5791,13 +5796,33 @@ app.get('/api/admin/whatsapp-connections', (req, res) => {
 app.post('/api/admin/brands', (req, res) => {
   try {
     const requestedBrands = Array.isArray(req.body?.brands) ? req.body.brands : [];
-    if (!isPlatformAdmin(req.adminUser) && requestedBrands.some((brand) => !canAccessBrand(req.adminUser, brand?.id))) {
+    const isPlatform = isPlatformAdmin(req.adminUser);
+    const authorizedBrandIds = getAuthorizedBrandIds(req.adminUser);
+    let nextBrands;
+
+    if (isPlatform) {
+      nextBrands = replaceBrands(requestedBrands);
+    } else if (!authorizedBrandIds.length && requestedBrands.length === 1) {
+      const firstBrandId = String(requestedBrands[0]?.id || '').trim();
+      if (!firstBrandId) throw new Error('Brand id is required before saving');
+      nextBrands = replaceBrands([...brands, requestedBrands[0]]);
+      const userIndex = adminUsers.findIndex((user) => user.id === req.adminUser.id);
+      if (userIndex >= 0) {
+        adminUsers[userIndex] = {
+          ...adminUsers[userIndex],
+          brandIds: [firstBrandId],
+          updatedAt: new Date().toISOString()
+        };
+        req.adminUser = adminUsers[userIndex];
+        persistAdminUsers(adminUsers);
+      }
+    } else if (requestedBrands.some((brand) => !canAccessBrand(req.adminUser, brand?.id))) {
       res.status(403).json({ error: 'Brand access denied' });
       return;
+    } else {
+      nextBrands = replaceBrands(brands.map((brand) => requestedBrands.find((candidate) => candidate.id === brand.id) || brand));
     }
-    const nextBrands = isPlatformAdmin(req.adminUser)
-      ? replaceBrands(requestedBrands)
-      : replaceBrands(brands.map((brand) => requestedBrands.find((candidate) => candidate.id === brand.id) || brand));
+
     nextBrands.forEach((brand) => {
       logAuditEvent({
         outletId: null,
