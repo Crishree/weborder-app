@@ -4161,6 +4161,10 @@ function renderAdminMenuPage() {
         const res = await fetch('/api/admin/brands');
         const data = await res.json();
         brandState = data.brands || [];
+        if (!brandState.length) {
+          brandState = [defaultBrand()];
+          setBrandStatus('Add your brand profile to continue. The app URL will auto-fill from the brand name.', 'ok');
+        }
         renderBrandSelector();
         applyBrandProfileMode();
         renderBrandForm(0);
