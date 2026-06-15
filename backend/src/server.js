@@ -3654,6 +3654,16 @@ function renderAdminMenuPage() {
         applyBrandProfileMode();
       }
 
+      async function loadAdminProfileSafely() {
+        try {
+          await loadAdminProfile();
+        } catch (error) {
+          currentAdminUser = null;
+          applyBrandProfileMode();
+          setBrandStatus('Brand profile is editable. Admin role details could not be loaded, so multi-brand controls are temporarily visible.', 'ok');
+        }
+      }
+
       function applyBrandProfileMode() {
         const platformAdmin = isPlatformAdminUser();
         brandPanelTitle.textContent = platformAdmin ? 'Brands' : 'Brand Profile';
@@ -5060,8 +5070,8 @@ function renderAdminMenuPage() {
         }
       });
 
-      loadAdminProfile()
-        .then(() => loadBrands())
+      loadBrands()
+        .then(() => loadAdminProfileSafely())
         .then(() => loadPetpoojaConnections())
         .then(() => loadPaymentConnections())
         .then(() => loadWhatsAppConnections())
