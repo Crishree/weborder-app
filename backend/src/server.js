@@ -3671,6 +3671,23 @@ function renderAdminMenuPage() {
           .replace(/^_+|_+$/g, '');
       }
 
+      function slugifySubdomain(value) {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
+
+      function buildSuggestedBrandAppUrl(brandName) {
+        const subdomain = slugifySubdomain(brandName);
+        return subdomain ? 'https://' + subdomain + '.pikquik.com' : '';
+      }
+
+      function isSuggestedBrandAppUrl(value) {
+        return /^https:\/\/[a-z0-9-]+\.pikquik\.com$/i.test(String(value || '').trim());
+      }
+
       function renderPreview(rawText) {
         preview.innerHTML = '';
         try {
@@ -4051,11 +4068,21 @@ function renderAdminMenuPage() {
       function syncBrandStateFromForm() {
         const selectedIndex = Number(brandSelect.value || 0);
         if (!brandState[selectedIndex]) return;
+        const previousAppUrl = brandState[selectedIndex].customerAppBaseUrl || '';
         Array.from(brandForm.querySelectorAll('[data-brand-field]')).forEach((field) => {
           brandState[selectedIndex][field.dataset.brandField] = field.value.trim();
         });
         if (!brandState[selectedIndex].id && brandState[selectedIndex].name) {
           brandState[selectedIndex].id = slugifyIdentifier(brandState[selectedIndex].name);
+        }
+        const suggestedAppUrl = buildSuggestedBrandAppUrl(brandState[selectedIndex].name);
+        if (
+          suggestedAppUrl &&
+          (!brandState[selectedIndex].customerAppBaseUrl || isSuggestedBrandAppUrl(previousAppUrl))
+        ) {
+          brandState[selectedIndex].customerAppBaseUrl = suggestedAppUrl;
+          const appUrlField = brandForm.querySelector('[data-brand-field="customerAppBaseUrl"]');
+          if (appUrlField) appUrlField.value = suggestedAppUrl;
         }
         if (brandState[selectedIndex].name) {
           brandState[selectedIndex].logoText = brandState[selectedIndex].name;
