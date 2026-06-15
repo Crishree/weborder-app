@@ -37,6 +37,7 @@ const ADMIN_AUTH_TOKEN = String(process.env.ADMIN_AUTH_TOKEN || '').trim();
 const ADMIN_SESSION_SECRET = String(process.env.ADMIN_SESSION_SECRET || process.env.SESSION_SECRET || APP_ENCRYPTION_KEY || '').trim();
 const ADMIN_SEED_EMAIL = String(process.env.ADMIN_SEED_EMAIL || process.env.ADMIN_USERNAME || '').trim().toLowerCase();
 const ADMIN_SEED_PASSWORD = String(process.env.ADMIN_SEED_PASSWORD || process.env.ADMIN_PASSWORD || '').trim();
+const ADMIN_SIGNUP_ENABLED = String(process.env.ADMIN_SIGNUP_ENABLED || 'true').trim().toLowerCase() !== 'false';
 const ALLOW_PAYMENT_FALLBACK = String(process.env.ALLOW_PAYMENT_FALLBACK || '').trim().toLowerCase() === 'true';
 const CORS_ORIGIN = String(process.env.CORS_ORIGIN || process.env.CORS_ORIGINS || '').trim();
 const allowedCorsOrigins = CORS_ORIGIN
@@ -188,6 +189,21 @@ function clearAdminSessionCookie(res) {
   res.setHeader('Set-Cookie', `pikquik_admin_session=; Path=/; HttpOnly; SameSite=Lax${secure}; Max-Age=0`);
 }
 
+function slugifyId(value, fallback = 'brand') {
+  const base = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || fallback;
+  let candidate = base;
+  let counter = 2;
+  while (brands.some((brand) => brand.id === candidate) || outlets.some((outlet) => outlet.id === candidate)) {
+    candidate = `${base}_${counter}`;
+    counter += 1;
+  }
+  return candidate;
+}
+
 function renderAdminLoginPage(message = '') {
   return `<!doctype html>
 <html lang="en">
@@ -203,6 +219,8 @@ function renderAdminLoginPage(message = '') {
       label { display: block; margin: 14px 0 8px; font-weight: 700; font-size: 14px; }
       input { width: 100%; box-sizing: border-box; border: 1px solid #ddd1bf; border-radius: 14px; padding: 13px 14px; font: inherit; }
       button { width: 100%; margin-top: 20px; min-height: 46px; border: 0; border-radius: 999px; background: #0a6f5c; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+      a { color: #0a6f5c; font-weight: 700; text-decoration: none; }
+      .alt { margin: 18px 0 0; text-align: center; font-size: 14px; }
       .error { background: #fff0ef; color: #b1261d; border: 1px solid rgba(177, 38, 29, 0.18); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
     </style>
   </head>
@@ -216,9 +234,115 @@ function renderAdminLoginPage(message = '') {
       <label for="password">Password</label>
       <input id="password" name="password" type="password" autocomplete="current-password" required />
       <button type="submit">Sign in</button>
+      ${ADMIN_SIGNUP_ENABLED ? '<p class="alt">New brand? <a href="/admin/signup">Create brand workspace</a></p>' : ''}
     </form>
   </body>
 </html>`;
+}
+
+function renderAdminSignupPage(message = '') {
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create Brand Workspace</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: "Avenir Next", "Aptos", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4efe6; color: #171411; }
+      form { width: min(480px, calc(100vw - 32px)); background: #fffdf8; border: 1px solid #ddd1bf; border-radius: 22px; box-shadow: 0 20px 50px rgba(28, 21, 12, 0.08); padding: 28px; box-sizing: border-box; }
+      h1 { margin: 0 0 8px; font-family: Georgia, serif; font-size: 34px; line-height: 1; }
+      p { margin: 0 0 22px; color: #6f675d; line-height: 1.5; }
+      label { display: block; margin: 14px 0 8px; font-weight: 700; font-size: 14px; }
+      input { width: 100%; box-sizing: border-box; border: 1px solid #ddd1bf; border-radius: 14px; padding: 13px 14px; font: inherit; }
+      button { width: 100%; margin-top: 20px; min-height: 46px; border: 0; border-radius: 999px; background: #0a6f5c; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+      a { color: #0a6f5c; font-weight: 700; text-decoration: none; }
+      .alt { margin: 18px 0 0; text-align: center; font-size: 14px; }
+      .error { background: #fff0ef; color: #b1261d; border: 1px solid rgba(177, 38, 29, 0.18); border-radius: 14px; padding: 12px 14px; margin-bottom: 16px; }
+    </style>
+  </head>
+  <body>
+    <form method="post" action="/admin/signup">
+      <h1>Create Workspace</h1>
+      <p>Create a brand workspace and first brand admin account.</p>
+      ${message ? `<div class="error">${escapeHtml(message)}</div>` : ''}
+      <label for="brandName">Brand name</label>
+      <input id="brandName" name="brandName" type="text" autocomplete="organization" required />
+      <label for="tagLine">Tag line</label>
+      <input id="tagLine" name="tagLine" type="text" placeholder="Order ahead. Pay online. Pick up fast." required />
+      <label for="appUrl">Customer app URL</label>
+      <input id="appUrl" name="appUrl" type="url" placeholder="https://brand.pikquik.com" required />
+      <label for="name">Your name</label>
+      <input id="name" name="name" type="text" autocomplete="name" required />
+      <label for="email">Admin email</label>
+      <input id="email" name="email" type="email" autocomplete="username" required />
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="10" required />
+      <button type="submit">Create brand workspace</button>
+      <p class="alt">Already have an account? <a href="/admin/login">Sign in</a></p>
+    </form>
+  </body>
+</html>`;
+}
+
+function createBrandWorkspace({ brandName, tagLine, appUrl, adminName, email, password }) {
+  const normalizedBrandName = String(brandName || '').trim();
+  const normalizedTagLine = String(tagLine || '').trim();
+  const normalizedAppUrl = String(appUrl || '').trim().replace(/\/+$/, '');
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  const normalizedPassword = String(password || '').trim();
+  if (!normalizedBrandName) throw new Error('Brand name is required');
+  if (!normalizedTagLine) throw new Error('Tag line is required');
+  if (!normalizedAppUrl) throw new Error('Customer app URL is required');
+  try {
+    const parsedAppUrl = new URL(normalizedAppUrl);
+    if (!['http:', 'https:'].includes(parsedAppUrl.protocol)) {
+      throw new Error('invalid protocol');
+    }
+  } catch (error) {
+    throw new Error('Customer app URL must be a valid http or https URL');
+  }
+  if (!normalizedEmail) throw new Error('Admin email is required');
+  if (normalizedPassword.length < 10) throw new Error('Password must be at least 10 characters');
+  if (adminUsers.some((user) => user.email === normalizedEmail)) throw new Error('An admin account already exists for this email');
+
+  const brandId = slugifyId(normalizedBrandName, 'brand');
+  const now = new Date().toISOString();
+  const brand = normalizeBrands([{
+    id: brandId,
+    name: normalizedBrandName,
+    customerAppBaseUrl: normalizedAppUrl,
+    petpoojaConnectionId: '',
+    paymentConnectionId: '',
+    whatsappConnectionId: '',
+    heroEyebrow: normalizedBrandName,
+    heroTitle: normalizedTagLine,
+    heroSubtitle: 'Place your order, pay online, and collect it with your pickup code.',
+    logoText: normalizedBrandName,
+    logoUrl: '',
+    primaryColor: '#007a63',
+    accentColor: '#ffd84d',
+    accentTextColor: '#202020',
+    backgroundColor: '#fffaf0',
+    surfaceColor: '#ffffff'
+  }])[0];
+  const user = normalizeAdminUser({
+    id: `admin_${nanoid(10)}`,
+    email: normalizedEmail,
+    name: String(adminName || normalizedEmail).trim(),
+    role: ADMIN_ROLES.BRAND_ADMIN,
+    status: 'ACTIVE',
+    brandIds: [brandId],
+    outletIds: [],
+    passwordHash: hashAdminPassword(normalizedPassword),
+    createdAt: now,
+    updatedAt: now
+  }, adminUsers.length);
+
+  brands = [...brands, brand];
+  adminUsers = [...adminUsers, user];
+  persistBrands(brands);
+  persistAdminUsers(adminUsers);
+  return { brand, user };
 }
 
 app.use(express.urlencoded({ extended: false }));
@@ -243,6 +367,40 @@ app.post('/admin/login', (req, res) => {
     res.redirect('/admin/menu');
   } catch (error) {
     res.status(401).json({ error: 'Admin authentication required' });
+  }
+});
+
+app.get('/admin/signup', (req, res) => {
+  if (!ADMIN_SIGNUP_ENABLED) {
+    res.status(404).send('Signup is not enabled');
+    return;
+  }
+  if (getAdminUserForRequest(req)) {
+    res.redirect('/admin/menu');
+    return;
+  }
+  res.type('html').send(renderAdminSignupPage());
+});
+
+app.post('/admin/signup', (req, res) => {
+  if (!ADMIN_SIGNUP_ENABLED) {
+    res.status(404).send('Signup is not enabled');
+    return;
+  }
+  try {
+    const { user } = createBrandWorkspace({
+      brandName: req.body?.brandName,
+      tagLine: req.body?.tagLine,
+      appUrl: req.body?.appUrl,
+      adminName: req.body?.name,
+      email: req.body?.email,
+      password: req.body?.password
+    });
+    const session = createAdminSession(user.id);
+    setAdminSessionCookie(res, session.token, session.expiresAt);
+    res.redirect('/admin/menu');
+  } catch (error) {
+    res.status(400).type('html').send(renderAdminSignupPage(error.message));
   }
 });
 
