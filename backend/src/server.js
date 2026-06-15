@@ -280,6 +280,34 @@ function renderAdminSignupPage(message = '') {
       <button type="submit">Create brand workspace</button>
       <p class="alt">Already have an account? <a href="/admin/login">Sign in</a></p>
     </form>
+    <script>
+      const brandNameInput = document.getElementById('brandName');
+      const appUrlInput = document.getElementById('appUrl');
+
+      function slugifySubdomain(value) {
+        return String(value || '')
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+      }
+
+      function suggestedAppUrl(value) {
+        const subdomain = slugifySubdomain(value);
+        return subdomain ? 'https://' + subdomain + '.pikquik.com' : '';
+      }
+
+      function isAutoSuggestedUrl(value) {
+        return /^https:\\/\\/[a-z0-9-]+\\.pikquik\\.com$/i.test(String(value || '').trim());
+      }
+
+      brandNameInput.addEventListener('input', () => {
+        const nextUrl = suggestedAppUrl(brandNameInput.value);
+        if (nextUrl && (!appUrlInput.value.trim() || isAutoSuggestedUrl(appUrlInput.value))) {
+          appUrlInput.value = nextUrl;
+        }
+      });
+    </script>
   </body>
 </html>`;
 }
