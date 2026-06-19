@@ -3167,6 +3167,7 @@ function renderAdminMenuPage() {
           <button class="secondary" type="submit">Log out</button>
         </form>
       </section>
+      <div id="admin-runtime-status" class="status show">Admin controls loading...</div>
 
       <nav class="section-nav" aria-label="Admin setup sections">
         <a href="#outlet-setup">Outlet Setup</a>
@@ -3435,9 +3436,9 @@ function renderAdminMenuPage() {
 
     <script>
       const DEFAULT_PETPOOJA_API_BASE_URL = 'https://api.petpooja.com';
-      const ADMIN_UI_VERSION = '8788304-controls';
+      const ADMIN_UI_VERSION = '98e18a6-runtime-banner';
       function showAdminRuntimeStatus(message, type = 'error') {
-        const target = document.getElementById('status') || document.getElementById('brand-status');
+        const target = document.getElementById('admin-runtime-status') || document.getElementById('status') || document.getElementById('brand-status');
         if (!target) return;
         target.textContent = message;
         target.className = 'status show ' + type;
