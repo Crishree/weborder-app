@@ -3435,6 +3435,20 @@ function renderAdminMenuPage() {
 
     <script>
       const DEFAULT_PETPOOJA_API_BASE_URL = 'https://api.petpooja.com';
+      const ADMIN_UI_VERSION = '8788304-controls';
+      function showAdminRuntimeStatus(message, type = 'error') {
+        const target = document.getElementById('status') || document.getElementById('brand-status');
+        if (!target) return;
+        target.textContent = message;
+        target.className = 'status show ' + type;
+      }
+      window.addEventListener('error', (event) => {
+        showAdminRuntimeStatus('Admin UI error: ' + (event.message || 'Unknown script error'));
+      });
+      window.addEventListener('unhandledrejection', (event) => {
+        const reason = event.reason;
+        showAdminRuntimeStatus('Admin UI error: ' + (reason?.message || reason || 'Unexpected async error'));
+      });
       const textarea = document.getElementById('menu-json');
       const fileInput = document.getElementById('menu-file');
       const imageFileInput = document.getElementById('image-file');
@@ -5095,6 +5109,8 @@ function renderAdminMenuPage() {
           setPaymentsStatus(error.message, 'error');
         }
       });
+
+      showAdminRuntimeStatus('Admin controls loaded (' + ADMIN_UI_VERSION + ').', 'ok');
 
       loadBrands()
         .then(() => loadAdminProfileSafely())
