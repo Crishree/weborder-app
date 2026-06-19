@@ -3434,6 +3434,7 @@ function renderAdminMenuPage() {
     </div>
 
     <script>
+      const DEFAULT_PETPOOJA_API_BASE_URL = 'https://api.petpooja.com';
       const textarea = document.getElementById('menu-json');
       const fileInput = document.getElementById('menu-file');
       const imageFileInput = document.getElementById('image-file');
