@@ -2030,6 +2030,18 @@ export function replaceWhatsAppConnections(nextConnections, { persist = true } =
   return normalizedConnections;
 }
 
+function mergeConnectorSecrets(existingConnections, requestedConnections, secretFields = []) {
+  const existingById = new Map(existingConnections.map((connection) => [connection.id, connection]));
+  return (Array.isArray(requestedConnections) ? requestedConnections : []).map((connection) => {
+    const existing = existingById.get(String(connection?.id || '').trim());
+    if (!existing) return connection;
+    return secretFields.reduce((merged, field) => {
+      if (String(merged?.[field] || '').trim()) return merged;
+      return { ...merged, [field]: existing[field] || '' };
+    }, { ...connection });
+  });
+}
+
 export function replaceOutlets(nextOutlets, { persist = true } = {}) {
   const normalizedOutlets = normalizeOutlets(nextOutlets);
   const invalidOutletPaymentConnector = normalizedOutlets.find((outlet) => outlet.paymentConnectionId && !getPaymentConnection(outlet.paymentConnectionId));
@@ -5851,25 +5863,26 @@ app.post('/api/admin/brands', (req, res) => {
 });
 
 app.post('/api/admin/petpooja-connections', (req, res) => {
-  if (!isPlatformAdmin(req.adminUser)) {
-    res.status(403).json({ error: 'Platform admin access required to manage shared Petpooja connectors' });
-    return;
-  }
   try {
-    const nextConnections = replacePetpoojaConnections(req.body?.connections);
-    res.json({ ok: true, connections: nextConnections });
+    const requestedConnections = isPlatformAdmin(req.adminUser)
+      ? req.body?.connections
+      : mergeConnectorSecrets(petpoojaConnections, req.body?.connections, ['accessToken', 'appKey', 'appSecret']);
+    const nextConnections = replacePetpoojaConnections(requestedConnections);
+    res.json({
+      ok: true,
+      connections: isPlatformAdmin(req.adminUser) ? nextConnections : nextConnections.map(sanitizePetpoojaConnection)
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
 app.post('/api/admin/payment-connections', (req, res) => {
-  if (!isPlatformAdmin(req.adminUser)) {
-    res.status(403).json({ error: 'Platform admin access required to manage shared payment connectors' });
-    return;
-  }
   try {
-    const nextConnections = replacePaymentConnections(req.body?.connections);
+    const requestedConnections = isPlatformAdmin(req.adminUser)
+      ? req.body?.connections
+      : mergeConnectorSecrets(paymentConnections, req.body?.connections, ['apiKey', 'apiSecret', 'webhookSecret']);
+    const nextConnections = replacePaymentConnections(requestedConnections);
     nextConnections.forEach((connection) => {
       logAuditEvent({
         outletId: null,
@@ -5886,19 +5899,21 @@ app.post('/api/admin/payment-connections', (req, res) => {
         }
       });
     });
-    res.json({ ok: true, connections: nextConnections });
+    res.json({
+      ok: true,
+      connections: isPlatformAdmin(req.adminUser) ? nextConnections : nextConnections.map(sanitizePaymentConnection)
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
 });
 
 app.post('/api/admin/whatsapp-connections', (req, res) => {
-  if (!isPlatformAdmin(req.adminUser)) {
-    res.status(403).json({ error: 'Platform admin access required to manage shared WhatsApp connectors' });
-    return;
-  }
   try {
-    const nextConnections = replaceWhatsAppConnections(req.body?.connections);
+    const requestedConnections = isPlatformAdmin(req.adminUser)
+      ? req.body?.connections
+      : mergeConnectorSecrets(whatsappConnections, req.body?.connections, ['verifyToken', 'accessToken']);
+    const nextConnections = replaceWhatsAppConnections(requestedConnections);
     nextConnections.forEach((connection) => {
       logAuditEvent({
         outletId: null,
@@ -5915,7 +5930,10 @@ app.post('/api/admin/whatsapp-connections', (req, res) => {
         }
       });
     });
-    res.json({ ok: true, connections: nextConnections });
+    res.json({
+      ok: true,
+      connections: isPlatformAdmin(req.adminUser) ? nextConnections : nextConnections.map(sanitizeWhatsAppConnection)
+    });
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
