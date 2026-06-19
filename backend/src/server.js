@@ -137,7 +137,11 @@ function requireAdminAuth(req, res, next) {
   }
 
   if (!authConfigured) {
-    res.status(503).json({ error: 'Admin authentication is not configured' });
+    if (ADMIN_SIGNUP_ENABLED && !req.path.startsWith('/api/admin')) {
+      res.redirect('/admin/signup');
+      return;
+    }
+    res.status(503).json({ error: 'Admin authentication is not configured. Create the first brand workspace at /admin/signup.' });
     return;
   }
 
@@ -376,6 +380,10 @@ function createBrandWorkspace({ brandName, tagLine, appUrl, adminName, email, pa
 app.use(express.urlencoded({ extended: false }));
 
 app.get('/admin/login', (req, res) => {
+  if (!adminUsers.length && !ADMIN_AUTH_TOKEN && ADMIN_SIGNUP_ENABLED) {
+    res.redirect('/admin/signup');
+    return;
+  }
   if (getAdminUserForRequest(req)) {
     res.redirect('/admin/menu');
     return;
