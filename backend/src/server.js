@@ -3448,7 +3448,7 @@ function renderAdminMenuPage() {
       });
       window.addEventListener('unhandledrejection', (event) => {
         const reason = event.reason;
-        showAdminRuntimeStatus('Admin UI error: ' + (reason?.message || reason || 'Unexpected async error'));
+        showAdminRuntimeStatus('Admin UI error: ' + ((reason && reason.message) || reason || 'Unexpected async error'));
       });
       const textarea = document.getElementById('menu-json');
       const fileInput = document.getElementById('menu-file');
@@ -3547,7 +3547,7 @@ function renderAdminMenuPage() {
       function defaultOutlet() {
         return {
           id: '',
-          brandId: brandState[0]?.id || 'neubar',
+          brandId: (brandState[0] && brandState[0].id) || 'neubar',
           petpoojaConnectionId: '',
           whatsappConnectionId: '',
           name: '',
@@ -3679,7 +3679,7 @@ function renderAdminMenuPage() {
       }
 
       function isPlatformAdminUser() {
-        return currentAdminUser?.role === 'PLATFORM_ADMIN';
+        return currentAdminUser && currentAdminUser.role === 'PLATFORM_ADMIN';
       }
 
       async function loadAdminProfile() {
@@ -3729,7 +3729,7 @@ function renderAdminMenuPage() {
       }
 
       function escapeHtml(value) {
-        return String(value ?? '')
+        return String(value == null ? '' : value)
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
           .replace(/>/g, '&gt;')
@@ -3774,7 +3774,7 @@ function renderAdminMenuPage() {
             card.innerHTML = '<strong>' + (item.name || 'Untitled item') + '</strong>' +
               '<div>ID: ' + (item.id || '-') + '</div>' +
               '<div>Category: ' + (item.category || '-') + '</div>' +
-              '<div>Price: ₹' + (item.price ?? '-') + '</div>' +
+              '<div>Price: ₹' + (item.price == null ? '-' : item.price) + '</div>' +
               '<div>Available: ' + (item.available === false ? 'No' : 'Yes') + '</div>';
             preview.appendChild(card);
           });
@@ -3823,12 +3823,12 @@ function renderAdminMenuPage() {
           payments.map((paymentRow) =>
             '<tr>' +
               '<td><strong>' + escapeHtml(paymentRow.orderId) + '</strong><br /><span class="hint">' + escapeHtml(paymentRow.createdAt) + '</span></td>' +
-              '<td>' + escapeHtml(paymentRow.payment?.provider || '-') + '</td>' +
+              '<td>' + escapeHtml((paymentRow.payment && paymentRow.payment.provider) || '-') + '</td>' +
               '<td>₹' + escapeHtml(paymentRow.total) + '</td>' +
-              '<td><span class="pill">' + escapeHtml(paymentRow.payment?.status || '-') + '</span></td>' +
-              '<td>' + (paymentRow.payment?.verifiedByWebhook ? 'Verified webhook' : 'Pending/manual') + '</td>' +
+              '<td><span class="pill">' + escapeHtml((paymentRow.payment && paymentRow.payment.status) || '-') + '</span></td>' +
+              '<td>' + (paymentRow.payment && paymentRow.payment.verifiedByWebhook ? 'Verified webhook' : 'Pending/manual') + '</td>' +
               '<td>' +
-                (paymentRow.payment?.status === 'PAID'
+                (paymentRow.payment && paymentRow.payment.status === 'PAID'
                   ? '<span class="hint">No action required</span>'
                   : '<button class="primary simulate-paid" type="button" data-order-id="' + escapeHtml(paymentRow.orderId) + '">Simulate Paid</button>') +
               '</td>' +
@@ -4118,8 +4118,8 @@ function renderAdminMenuPage() {
           '<div><label>Pickup label</label><input type="text" data-outlet-field="pickupLabel" value="' + escapeHtml(outlet.pickupLabel) + '" /></div>' +
           '<div><label>Address</label><input type="text" data-outlet-field="address" value="' + escapeHtml(outlet.address) + '" /></div>' +
           '<div><label>Outlet URL override</label><input type="text" data-outlet-field="customerAppBaseUrl" value="' + escapeHtml(outlet.customerAppBaseUrl || '') + '" /></div>' +
-          '<div><label>Latitude</label><input type="text" data-outlet-field="latitude" value="' + escapeHtml(outlet.latitude ?? '') + '" /></div>' +
-          '<div><label>Longitude</label><input type="text" data-outlet-field="longitude" value="' + escapeHtml(outlet.longitude ?? '') + '" /></div>' +
+          '<div><label>Latitude</label><input type="text" data-outlet-field="latitude" value="' + escapeHtml(outlet.latitude == null ? '' : outlet.latitude) + '" /></div>' +
+          '<div><label>Longitude</label><input type="text" data-outlet-field="longitude" value="' + escapeHtml(outlet.longitude == null ? '' : outlet.longitude) + '" /></div>' +
           '<div><label>Location keywords</label><input type="text" data-outlet-field="locationKeywords" value="' + escapeHtml(Array.isArray(outlet.locationKeywords) ? outlet.locationKeywords.join(', ') : outlet.locationKeywords || '') + '" /></div>' +
           '<div><label>Timezone</label><input type="text" data-outlet-field="timezone" value="' + escapeHtml(outlet.timezone) + '" /></div>' +
           '<div><label>Payment provider</label><input type="text" data-outlet-field="paymentProvider" value="' + escapeHtml(outlet.paymentProvider) + '" /></div>' +
@@ -4200,7 +4200,7 @@ function renderAdminMenuPage() {
 
       function getSelectedOutletId() {
         const selectedIndex = Number(outletSelect.value || 0);
-        return outletState[selectedIndex]?.id || outletState[0]?.id || 'showcase_hq';
+        return (outletState[selectedIndex] && outletState[selectedIndex].id) || (outletState[0] && outletState[0].id) || 'showcase_hq';
       }
 
       async function loadBrands() {
@@ -4884,7 +4884,7 @@ function renderAdminMenuPage() {
         const fileInput = event.target.closest('[data-row-image-file="true"]');
         if (!fileInput) return;
         const card = fileInput.closest('.menu-item');
-        const imageField = card?.querySelector('[data-field="image"]');
+        const imageField = card && card.querySelector('[data-field="image"]');
         const file = fileInput.files[0];
         if (!card || !imageField || !file) return;
 
@@ -5041,7 +5041,7 @@ function renderAdminMenuPage() {
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Could not send WhatsApp campaign');
-          setMarketingStatus('Campaign sent. Delivered: ' + (data.campaign?.sentCount || 0) + ', failed: ' + (data.campaign?.failedCount || 0) + '.', 'ok');
+          setMarketingStatus('Campaign sent. Delivered: ' + ((data.campaign && data.campaign.sentCount) || 0) + ', failed: ' + ((data.campaign && data.campaign.failedCount) || 0) + '.', 'ok');
           await loadMarketingData();
         } catch (error) {
           setMarketingStatus(error.message, 'error');
