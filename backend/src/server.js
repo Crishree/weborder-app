@@ -3168,6 +3168,15 @@ function renderAdminMenuPage() {
         </form>
       </section>
       <div id="admin-runtime-status" class="status show">Admin controls loading...</div>
+      <script>
+        (function () {
+          var target = document.getElementById('admin-runtime-status');
+          if (target) {
+            target.textContent = 'Admin bootstrap script started...';
+            target.className = 'status show ok';
+          }
+        }());
+      </script>
 
       <nav class="section-nav" aria-label="Admin setup sections">
         <a href="#outlet-setup">Outlet Setup</a>
