@@ -208,6 +208,22 @@ function slugifyId(value, fallback = 'brand') {
   return candidate;
 }
 
+function buildUniqueIdFromSet(value, fallback, reservedIds) {
+  const base = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '') || fallback;
+  let candidate = base;
+  let counter = 2;
+  while (reservedIds.has(candidate)) {
+    candidate = `${base}_${counter}`;
+    counter += 1;
+  }
+  reservedIds.add(candidate);
+  return candidate;
+}
+
 function renderAdminLoginPage(message = '') {
   return `<!doctype html>
 <html lang="en">
@@ -984,21 +1000,29 @@ function normalizeOutlets(rawOutlets) {
     throw new Error('Outlets must be a non-empty array');
   }
 
-  const seenIds = new Set();
+  const reservedIds = new Set(brands.map((brand) => brand.id));
   return rawOutlets.map((outlet, index) => {
     if (!outlet || typeof outlet !== 'object') {
       throw new Error(`Outlet at index ${index} must be an object`);
     }
 
+    const normalizedName = String(outlet.name || '').trim();
+    const requestedId = String(outlet.id || '').trim();
+    const outletId = requestedId || buildUniqueIdFromSet(normalizedName, `outlet_${index + 1}`, reservedIds);
+    if (requestedId) {
+      if (reservedIds.has(requestedId)) throw new Error(`Duplicate outlet id: ${requestedId}`);
+      reservedIds.add(requestedId);
+    }
+
     const normalizedOutlet = {
-      id: String(outlet.id || '').trim(),
+      id: outletId,
       brandId: String(outlet.brandId || defaultBrands[0]?.id || '').trim(),
       petpoojaConnectionId: String(outlet.petpoojaConnectionId || '').trim(),
       paymentConnectionId: String(outlet.paymentConnectionId || '').trim(),
       whatsappConnectionId: String(outlet.whatsappConnectionId || '').trim(),
-      name: String(outlet.name || '').trim(),
+      name: normalizedName,
       status: String(outlet.status || 'ACTIVE').trim().toUpperCase(),
-      pickupLabel: String(outlet.pickupLabel || '').trim(),
+      pickupLabel: String(outlet.pickupLabel || 'Pickup counter').trim(),
       address: String(outlet.address || '').trim(),
       customerAppBaseUrl: String(outlet.customerAppBaseUrl || '').trim().replace(/\/+$/, ''),
       latitude: outlet.latitude === '' || outlet.latitude == null ? null : Number(outlet.latitude),
@@ -1017,10 +1041,9 @@ function normalizeOutlets(rawOutlets) {
       supportPhone: String(outlet.supportPhone || '').trim()
     };
 
-    if (!normalizedOutlet.id) throw new Error(`Outlet at index ${index} is missing id`);
-    if (seenIds.has(normalizedOutlet.id)) throw new Error(`Duplicate outlet id: ${normalizedOutlet.id}`);
     if (!normalizedOutlet.brandId) throw new Error(`Outlet ${normalizedOutlet.id} is missing brand id`);
     if (!normalizedOutlet.name) throw new Error(`Outlet ${normalizedOutlet.id} is missing name`);
+    if (!normalizedOutlet.address) throw new Error(`Outlet ${normalizedOutlet.id} is missing address`);
     if (!getBrand(normalizedOutlet.brandId)) throw new Error(`Outlet ${normalizedOutlet.id} references unknown brand ${normalizedOutlet.brandId}`);
     if (!['ACTIVE', 'INACTIVE'].includes(normalizedOutlet.status)) {
       throw new Error(`Outlet ${normalizedOutlet.id} has invalid status`);
@@ -1030,7 +1053,6 @@ function normalizeOutlets(rawOutlets) {
       throw new Error(`Outlet ${normalizedOutlet.id} has invalid coordinates`);
     }
 
-    seenIds.add(normalizedOutlet.id);
     return normalizedOutlet;
   });
 }
@@ -3561,10 +3583,11 @@ function renderAdminMenuPage() {
           id: '',
           brandId: (brandState[0] && brandState[0].id) || 'neubar',
           petpoojaConnectionId: '',
+          paymentConnectionId: '',
           whatsappConnectionId: '',
           name: '',
           status: 'ACTIVE',
-          pickupLabel: '',
+          pickupLabel: 'Pickup counter',
           address: '',
           customerAppBaseUrl: '',
           timezone: 'Asia/Kolkata',
@@ -4125,18 +4148,14 @@ function renderAdminMenuPage() {
           )
         ).join('');
         outletForm.innerHTML =
-          '<div><label>Outlet id</label><input type="text" data-outlet-field="id" value="' + escapeHtml(outlet.id) + '" /></div>' +
+          '<div class="full micro-copy">Outlet ID is generated automatically after save. Coordinates are resolved from the address by the backend when geocoding is configured.</div>' +
           '<div><label>Brand</label><select data-outlet-field="brandId">' + brandOptions + '</select></div>' +
-          '<div><label>Petpooja connection override</label><select data-outlet-field="petpoojaConnectionId">' + connectionOptions + '</select></div>' +
           '<div><label>Outlet name</label><input type="text" data-outlet-field="name" value="' + escapeHtml(outlet.name) + '" /></div>' +
+          '<div class="full"><label>Address</label><input type="text" data-outlet-field="address" value="' + escapeHtml(outlet.address) + '" placeholder="Building, street, city" /></div>' +
           '<div><label>Status</label><select data-outlet-field="status"><option value="ACTIVE"' + (outlet.status === 'ACTIVE' ? ' selected' : '') + '>Active</option><option value="INACTIVE"' + (outlet.status === 'INACTIVE' ? ' selected' : '') + '>Inactive</option></select></div>' +
-          '<div><label>Pickup label</label><input type="text" data-outlet-field="pickupLabel" value="' + escapeHtml(outlet.pickupLabel) + '" /></div>' +
-          '<div><label>Address</label><input type="text" data-outlet-field="address" value="' + escapeHtml(outlet.address) + '" /></div>' +
           '<div><label>Outlet URL override</label><input type="text" data-outlet-field="customerAppBaseUrl" value="' + escapeHtml(outlet.customerAppBaseUrl || '') + '" /></div>' +
-          '<div><label>Latitude</label><input type="text" data-outlet-field="latitude" value="' + escapeHtml(outlet.latitude == null ? '' : outlet.latitude) + '" /></div>' +
-          '<div><label>Longitude</label><input type="text" data-outlet-field="longitude" value="' + escapeHtml(outlet.longitude == null ? '' : outlet.longitude) + '" /></div>' +
           '<div><label>Location keywords</label><input type="text" data-outlet-field="locationKeywords" value="' + escapeHtml(Array.isArray(outlet.locationKeywords) ? outlet.locationKeywords.join(', ') : outlet.locationKeywords || '') + '" /></div>' +
-          '<div><label>Timezone</label><input type="text" data-outlet-field="timezone" value="' + escapeHtml(outlet.timezone) + '" /></div>' +
+          '<div><label>Petpooja connection override</label><select data-outlet-field="petpoojaConnectionId">' + connectionOptions + '</select></div>' +
           '<div><label>Payment provider</label><input type="text" data-outlet-field="paymentProvider" value="' + escapeHtml(outlet.paymentProvider) + '" /></div>' +
           '<div><label>Payment mode</label><input type="text" data-outlet-field="paymentMode" value="' + escapeHtml(outlet.paymentMode) + '" /></div>' +
           '<div><label>Petpooja outlet id</label><input type="text" data-outlet-field="petpoojaOutletId" value="' + escapeHtml(outlet.petpoojaOutletId) + '" /></div>' +
@@ -5975,13 +5994,23 @@ app.post('/api/admin/whatsapp-connections', (req, res) => {
 app.post('/api/admin/outlets', (req, res) => {
   try {
     const requestedOutlets = Array.isArray(req.body?.outlets) ? req.body.outlets : [];
-    if (!isPlatformAdmin(req.adminUser) && requestedOutlets.some((outlet) => !canAccessOutlet(req.adminUser, outlet?.id))) {
-      res.status(403).json({ error: 'Outlet access denied' });
-      return;
+    const isPlatform = isPlatformAdmin(req.adminUser);
+    if (!isPlatform) {
+      const unauthorizedOutlet = requestedOutlets.find((outlet) => {
+        const outletId = String(outlet?.id || '').trim();
+        const brandId = String(outlet?.brandId || '').trim();
+        return outletId ? !canAccessOutlet(req.adminUser, outletId) : !canAccessBrand(req.adminUser, brandId);
+      });
+      if (unauthorizedOutlet) {
+        res.status(403).json({ error: 'Outlet access denied' });
+        return;
+      }
     }
-    const nextOutlets = isPlatformAdmin(req.adminUser)
+    const nextOutlets = isPlatform
       ? replaceOutlets(requestedOutlets)
-      : replaceOutlets(outlets.map((outlet) => requestedOutlets.find((candidate) => candidate.id === outlet.id) || outlet));
+      : replaceOutlets(outlets
+          .filter((outlet) => !canAccessOutlet(req.adminUser, outlet.id))
+          .concat(requestedOutlets));
     nextOutlets.forEach((outlet) => {
       logAuditEvent({
         outletId: outlet.id,

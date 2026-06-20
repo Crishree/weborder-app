@@ -344,6 +344,26 @@ test('outlets can be replaced for multi-outlet admin management', () => {
   assert.equal(getOutlets()[1].status, 'INACTIVE');
 });
 
+test('outlet ids are generated from outlet names when omitted', () => {
+  const nextOutlets = replaceOutlets(
+    [
+      {
+        name: 'Neubar Virgo',
+        status: 'ACTIVE',
+        address: 'Bagmane Virgo, Bangalore',
+        paymentProvider: 'Generic',
+        paymentMode: 'payment_link'
+      }
+    ],
+    { persist: false }
+  );
+
+  assert.equal(nextOutlets[0].id, 'neubar_virgo');
+  assert.equal(nextOutlets[0].name, 'Neubar Virgo');
+  assert.equal(nextOutlets[0].pickupLabel, 'Pickup counter');
+  assert.equal(nextOutlets[0].timezone, 'Asia/Kolkata');
+});
+
 test('menus are stored independently per outlet', () => {
   replaceMenu(
     [
