@@ -302,7 +302,10 @@ function renderAdminSignupPage(message = '') {
       }
 
       function isAutoSuggestedUrl(value) {
-        return /^https:\\/\\/[a-z0-9-]+\\.pikquik\\.com$/i.test(String(value || '').trim());
+        const normalized = String(value || '').trim().toLowerCase();
+        if (!normalized.startsWith('https://') || !normalized.endsWith('.pikquik.com')) return false;
+        const subdomain = normalized.slice('https://'.length, -'.pikquik.com'.length);
+        return Boolean(subdomain) && subdomain === slugifySubdomain(subdomain);
       }
 
       brandNameInput.addEventListener('input', () => {
@@ -3768,7 +3771,10 @@ function renderAdminMenuPage() {
       }
 
       function isSuggestedBrandAppUrl(value) {
-        return /^https:\/\/[a-z0-9-]+\.pikquik\.com$/i.test(String(value || '').trim());
+        const normalized = String(value || '').trim().toLowerCase();
+        if (!normalized.startsWith('https://') || !normalized.endsWith('.pikquik.com')) return false;
+        const subdomain = normalized.slice('https://'.length, -'.pikquik.com'.length);
+        return Boolean(subdomain) && subdomain === slugifySubdomain(subdomain);
       }
 
       function renderPreview(rawText) {
